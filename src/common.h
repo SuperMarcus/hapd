@@ -5,16 +5,18 @@
 #ifndef ARDUINOHOMEKIT_COMMON_H
 #define ARDUINOHOMEKIT_COMMON_H
 
-#ifdef __cplusplus
-extern "C" {
+#include <cstdbool>
+#include <cstdint>
+#include <cstdlib>
+
+#ifndef HAP_DEBUG
+#include <HardwareSerial.h>
+#define HAP_DEBUG Serial.printf
 #endif
 
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdlib.h>
-
-#ifdef __cplusplus
-}
+#ifndef HAP_LWIP_TCP_NODELAY
+//Set to 0 to disable tcp nodelay
+#define HAP_LWIP_TCP_NODELAY 1
 #endif
 
 #endif //ARDUINOHOMEKIT_COMMON_H
