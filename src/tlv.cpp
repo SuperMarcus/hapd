@@ -74,7 +74,7 @@ unsigned int tlv8_read(tlv8_item *item, uint8_t *buffer, unsigned int length) {
         unsigned int can_read = item->length - item->offset;
         unsigned int to_read = can_read < need_read ? can_read : need_read;
 
-        memcpy(buffer, item->value, to_read);
+        memcpy(buffer + read, item->value + item->offset, to_read);
         read += to_read;
         item->offset += to_read;
 
