@@ -7,7 +7,7 @@
 
 tlv8_item *tlv8_parse(uint8_t * data, unsigned int length) {
     const uint8_t * end = data + length;
-    auto current_item = new tlv8_item;
+    auto current_item = new tlv8_item();
     auto start_item = current_item;
 
     while (data < end) {
@@ -16,7 +16,7 @@ tlv8_item *tlv8_parse(uint8_t * data, unsigned int length) {
         current_item->value = &data[2];
         current_item->offset = 0;
 
-        current_item->next = new tlv8_item;
+        current_item->next = new tlv8_item();
         current_item->next->previous = current_item;
         current_item = current_item->next;
     }
@@ -45,10 +45,13 @@ tlv8_item *tlv8_find(tlv8_item *chain, tlv8_type type) {
         chain = chain->previous;
     }
 
+    return tlv8_find_next(chain, type);
+}
+
+tlv8_item *tlv8_find_next(tlv8_item *chain, tlv8_type type) {
     while (chain != nullptr && chain->type != type){
         chain = chain->next;
     }
-
     return chain;
 }
 
@@ -116,4 +119,35 @@ void tlv8_detach(tlv8_item *item) {
     item->previous->next = item->next;
     item->next->previous = item->previous;
     delete item;
+}
+
+tlv8_item *tlv8_insert(tlv8_item *chain, tlv8_type type, unsigned int length, uint8_t *data) {
+    auto start_item = new tlv8_item();
+    auto current_item = start_item;
+
+    while (length > 0){
+        auto current_length = static_cast<uint8_t>(length > 255 ? 255 : length);
+        current_item->type = type;
+        current_item->length = current_length;
+        current_item->value = data;
+        current_item->offset = 0;
+
+        length -= current_length;
+        data += current_length;
+
+        if(length > 0){
+            auto next_item = new tlv8_item();
+            current_item->next = next_item;
+            next_item->previous = current_item;
+
+            current_item = next_item;
+        }
+    }
+
+    if(chain){
+        chain->previous = current_item;
+        current_item->next = chain;
+    }
+
+    return start_item;
 }

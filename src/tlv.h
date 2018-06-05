@@ -68,6 +68,15 @@ tlv8_item * tlv8_parse(uint8_t * data, unsigned int length);
 tlv8_item * tlv8_find(tlv8_item * chain, tlv8_type type);
 
 /**
+ * Find the item with the specific type after the given item.
+ *
+ * @param chain
+ * @param type
+ * @return
+ */
+tlv8_item * tlv8_find_next(tlv8_item * chain, tlv8_type type);
+
+/**
  * Read 'length' bytes of data from 'item' to 'buffer'. This will shift the
  * offset of the items in chain.
  *
@@ -122,5 +131,19 @@ void tlv8_free(tlv8_item * chain);
  * @param item The item to be detached
  */
 void tlv8_detach(tlv8_item * item);
+
+/**
+ * Insert an item to the chain. This function won't encode the chain yet, it
+ * creates a tlv8_item that points to the original data. This function will also
+ * take fragmentation into account.
+ *
+ * @param chain The chain that this item will be added to. Pass nullptr to create
+ *              a new chain.
+ * @param type tlv8_type of this item
+ * @param length Number of bytes of this item
+ * @param data Pointer to the actual data
+ * @return The newly created tlv8_item
+ */
+tlv8_item * tlv8_insert(tlv8_item * chain, tlv8_type type, unsigned int length, uint8_t * data);
 
 #endif //ARDUINOHOMEKIT_TLV_H

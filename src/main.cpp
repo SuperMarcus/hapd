@@ -10,6 +10,13 @@ void testLwipNetwork(){
     hap_network_init_bind(&conn, 80);
 }
 
+void testTlv(){
+    Serial.printf("[test] testing tlv8 implementation...\n");
+
+    auto tlv8 = new tlv8_item();
+    Serial.printf("[tlv8] 1 == %d\n", tlv8->previous == nullptr ? 1 : 0);
+}
+
 void _setup();
 
 void setup(){
@@ -21,7 +28,8 @@ void setup(){
 
     Serial.printf("[test] Testing...\n");
 
-    testLwipNetwork();
+//    testLwipNetwork();
+    testTlv();
 
     Serial.printf("[test] All tests have completed.\n");
 }
