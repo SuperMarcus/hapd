@@ -5,7 +5,7 @@
 #ifndef ARDUINOHOMEKIT_TLV_H
 #define ARDUINOHOMEKIT_TLV_H
 
-#include "common.h"
+#include <cstdint>
 
 enum tlv8_error_code: uint8_t {
     kTLVError_Unknown           = 0x01,
@@ -79,10 +79,48 @@ tlv8_item * tlv8_find(tlv8_item * chain, tlv8_type type);
 unsigned int tlv8_read(tlv8_item * item, uint8_t * buffer, unsigned int length);
 
 /**
- * Free up the memory allocated to the parsed tlv8_item * chain
+ * Get the length of the value contained in this tlv8_item. Use this method
+ * instead of directly accessing the 'length' property of tlv8_item to get
+ * accurate readings of the length, since items might be fragmented.
+ *
+ * @param item The tlv8 item
+ * @return Length of the item
+ */
+unsigned int tlv8_value_length(tlv8_item * item);
+
+/**
+ * Presume the number of bytes of tlv8_item after encodings given the length of
+ * the actual value. This function takes into account of the fragmentation part
+ * of tlv8.
+ *
+ * @param value_length Number of bytes of the value to be encoded
+ * @return
+ */
+unsigned int tlv8_item_length(unsigned int value_length);
+
+/**
+ * Get the total number of bytes of the chain after encoding. This function will
+ * also starts from the beginning of the chain.
+ *
+ * @param chain Any item in the chain
+ * @return Number of bytes required to contain this chain.
+ */
+unsigned int tlv8_chain_length(tlv8_item * chain);
+
+/**
+ * Free up the memory allocated to the parsed tlv8_item * chain, starts with the
+ * first item in the chain.
  *
  * @param chain
  */
 void tlv8_free(tlv8_item * chain);
+
+/**
+ * Detach the item from the chain and free up its memories. Note this will not
+ * take fragmentation into account.
+ *
+ * @param item The item to be detached
+ */
+void tlv8_detach(tlv8_item * item);
 
 #endif //ARDUINOHOMEKIT_TLV_H

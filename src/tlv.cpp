@@ -3,6 +3,7 @@
 //
 
 #include "tlv.h"
+#include <cstring>
 
 tlv8_item *tlv8_parse(uint8_t * data, unsigned int length) {
     const uint8_t * end = data + length;
@@ -24,7 +25,13 @@ tlv8_item *tlv8_parse(uint8_t * data, unsigned int length) {
 }
 
 void tlv8_free(tlv8_item *chain) {
-    auto current = chain;
+    tlv8_item * current;
+
+    //Gets to the first item
+    while (chain->previous != nullptr){
+        chain = chain->previous;
+    }
+
     while (chain != nullptr){
         current = chain;
         chain = current->next;
@@ -73,4 +80,40 @@ unsigned int tlv8_read(tlv8_item *item, uint8_t *buffer, unsigned int length) {
     }
 
     return read;
+}
+
+unsigned int tlv8_value_length(tlv8_item *item) {
+    unsigned int length = item->length;
+    while (item->next->type == item->type){
+        item = item->next;
+        length += item->length;
+    }
+    return length;
+}
+
+unsigned int tlv8_item_length(unsigned int value_length) {
+    return value_length + (value_length / 255 + 1) * 2;
+}
+
+unsigned int tlv8_chain_length(tlv8_item *chain) {
+    unsigned int length = 0;
+
+    //Start from the start of the chain
+    while (chain->previous != nullptr){
+        chain = chain->previous;
+    }
+
+    //Iterates the chain and adds up the lengths of each item
+    while (chain != nullptr){
+        length += chain->length;
+        chain = chain->next;
+    }
+
+    return length;
+}
+
+void tlv8_detach(tlv8_item *item) {
+    item->previous->next = item->next;
+    item->next->previous = item->previous;
+    delete item;
 }
