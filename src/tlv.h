@@ -41,6 +41,7 @@ struct tlv8_item {
     tlv8_type type;
     tlv8_length length;
     uint8_t * value;
+    uint8_t offset;
 
     tlv8_item * previous;
     tlv8_item * next;
@@ -54,6 +55,28 @@ struct tlv8_item {
  * @return nullptr if unsuccessful, a pointer otherwise
  */
 tlv8_item * tlv8_parse(uint8_t * data, unsigned int length);
+
+/**
+ * Find the item with the specific type in the chain. This function will
+ * search the item from the start of the chain, given that the chain passed
+ * can be at any position in the chain.
+ *
+ * @param chain
+ * @param type
+ * @return
+ */
+tlv8_item * tlv8_find(tlv8_item * chain, tlv8_type type);
+
+/**
+ * Read 'length' bytes of data from 'item' to 'buffer'. This will shift the
+ * offset of the items in chain.
+ *
+ * @param item Tlv8 item to be read from
+ * @param buffer Destination buffer
+ * @param length Number of bytes to be read
+ * @return Actual number of bytes copied to buffer
+ */
+unsigned int tlv8_read(tlv8_item * item, uint8_t * buffer, unsigned int length);
 
 /**
  * Free up the memory allocated to the parsed tlv8_item * chain
