@@ -20,10 +20,12 @@ struct hap_user_connection {
 };
 
 /**
- * The following functions are designed to be implemented by platforms.
+ * For future ports to other platforms, the following functions are designed
+ * to be implemented by platforms.
  *
- * The network functions of ArduinoHomeKit is driven by events sent by implementations. This
- * means that the implementations are suppose to call the handlers above.
+ * The network functions of ArduinoHomeKit is driven by events sent by
+ * implementations. This means that the implementations are suppose to
+ * call the handlers above.
  */
 
 /**
@@ -47,8 +49,8 @@ extern bool hap_network_send(hap_network_connection * client, const uint8_t * da
 /**
  * Close the target connection
  *
- * This asks the network implementation to close the tcp connection and free up any
- * memories used for this connection.
+ * This asks the network implementation to close the tcp connection and
+ * free up any memories used for this connection.
  *
  * @param client The connection to be closed
  * @return
@@ -56,8 +58,8 @@ extern bool hap_network_send(hap_network_connection * client, const uint8_t * da
 extern void hap_network_close(hap_network_connection * client);
 
 /**
- * The following functions are designed to be called by network implementations when an
- * event is triggered.
+ * The following functions are designed to be called by network
+ * implementations when an event is triggered.
  */
 
 /**

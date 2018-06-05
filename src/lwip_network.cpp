@@ -4,7 +4,7 @@
 
 #include <Arduino.h>
 
-//We know esp8266 has lwip, so enable this implementation by default for esp8266
+//We know esp8266 has lwip, so enable this by default for esp8266
 
 #if !defined(NO_BUILTIN_NETWORK_IMPLEMENTATION) && \
     defined(CORE_ESP8266_FEATURES_H) || \
@@ -44,6 +44,8 @@ err_t _hap_lwip_abort(struct tcp_pcb * pcb){
  */
 err_t _hap_lwip_close(struct tcp_pcb * pcb){
     if(pcb){
+        HAP_DEBUG("[lwip] Closing connection %08x:%u\n", pcb->remote_ip, pcb->remote_port);
+
         tcp_arg(pcb, nullptr);
         tcp_sent(pcb, nullptr);
         tcp_recv(pcb, nullptr);
@@ -72,9 +74,9 @@ err_t hap_lwip_receive(void * client, struct tcp_pcb * tpcb, struct pbuf * buffe
         while (buffer != nullptr){
             current = buffer;
 
-            HAP_DEBUG("[lwip] Received %u\n", current->len);
-            hap_event_network_receive(hapconn, static_cast<const uint8_t *>(current->payload), current->len);
+//            HAP_DEBUG("[lwip] Read %u bytes from %08x:%u\n", current->len, tpcb->remote_ip, tpcb->remote_port);
             tcp_recved(HAPCONN_PCB(hapconn), buffer->len);
+            hap_event_network_receive(hapconn, static_cast<const uint8_t *>(current->payload), current->len);
 
             buffer = current->next;
             current->next = nullptr;
@@ -135,6 +137,8 @@ err_t hap_lwip_accept(void * conn, tcp_pcb * pcb, err_t err){
 
     hap_event_network_accept(client_conn);
 
+    HAP_DEBUG("[lwip] New connection accepted: %08x:%u.\n", pcb->remote_ip, pcb->remote_port);
+
     return ERR_OK;
 }
 
@@ -172,6 +176,8 @@ bool hap_network_init_bind(hap_network_connection * conn, uint16_t port){
 
     tcp_arg(HAPCONN_PCB(conn), conn);
     tcp_accept(HAPCONN_PCB(conn), &hap_lwip_accept);
+
+    HAP_DEBUG("[lwip] New socket binded to port: %u\n", port);
 
     return true;
 }
