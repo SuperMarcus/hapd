@@ -133,6 +133,14 @@ void tlv8_free(tlv8_item * chain);
 void tlv8_detach(tlv8_item * item);
 
 /**
+ * Reset all the offsets in the chain to 0. Also starts from the start of the
+ * chain.
+ *
+ * @param chain
+ */
+void tlv8_reset_chain(tlv8_item * chain);
+
+/**
  * Insert an item to the chain. This function won't encode the chain yet, it
  * creates a tlv8_item that points to the original data. This function will also
  * take fragmentation into account.
@@ -145,5 +153,15 @@ void tlv8_detach(tlv8_item * item);
  * @return The newly created tlv8_item
  */
 tlv8_item * tlv8_insert(tlv8_item * chain, tlv8_type type, unsigned int length, uint8_t * data);
+
+/**
+ * Encode the tlv8 chain to the destination buffer. Its your responsibility to make
+ * sure that the buffer is larger than the value returned from tlv8_chain_length().
+ *
+ * @param chain
+ * @param destination
+ * @param length
+ */
+void tlv8_encode(tlv8_item * chain, uint8_t * destination);
 
 #endif //ARDUINOHOMEKIT_TLV_H

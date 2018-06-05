@@ -16,9 +16,13 @@ tlv8_item *tlv8_parse(uint8_t * data, unsigned int length) {
         current_item->value = &data[2];
         current_item->offset = 0;
 
-        current_item->next = new tlv8_item();
-        current_item->next->previous = current_item;
-        current_item = current_item->next;
+        data += current_item->length + 2;
+
+        if(end - data > 0){
+            current_item->next = new tlv8_item();
+            current_item->next->previous = current_item;
+            current_item = current_item->next;
+        }
     }
 
     return start_item;
@@ -125,29 +129,72 @@ tlv8_item *tlv8_insert(tlv8_item *chain, tlv8_type type, unsigned int length, ui
     auto start_item = new tlv8_item();
     auto current_item = start_item;
 
-    while (length > 0){
-        auto current_length = static_cast<uint8_t>(length > 255 ? 255 : length);
+    int _len = length;
+
+    while (_len > 0){
+        auto current_length = static_cast<uint8_t>(_len > 255 ? 255 : _len);
         current_item->type = type;
         current_item->length = current_length;
         current_item->value = data;
         current_item->offset = 0;
 
-        length -= current_length;
+        _len -= current_length;
         data += current_length;
 
-        if(length > 0){
-            auto next_item = new tlv8_item();
-            current_item->next = next_item;
-            next_item->previous = current_item;
-
-            current_item = next_item;
+        if(_len > 0){
+            current_item->next = new tlv8_item();
+            current_item->next->previous = current_item;
+            current_item = current_item->next;
         }
     }
 
+    //The last item is 255 bytes, insert a spacer after this item to prevent confusion
+    if(current_item->length == 255){
+        current_item->next = new tlv8_item();
+        current_item->next->previous = current_item;
+        current_item = current_item->next;
+
+        current_item->type = kTLVType_Separator;
+        current_item->length = 0;
+        current_item->value = nullptr;
+        current_item->offset = 0;
+    }
+
     if(chain){
+        if(chain->previous){
+            chain->previous->next = start_item;
+            start_item->previous = chain->previous;
+        }
         chain->previous = current_item;
         current_item->next = chain;
     }
 
     return start_item;
+}
+
+void tlv8_reset_chain(tlv8_item *chain) {
+    //Start from the start of the chain
+    while (chain->previous != nullptr){
+        chain = chain->previous;
+    }
+
+    while (chain != nullptr){
+        chain->offset = 0;
+        chain = chain->next;
+    }
+}
+
+void tlv8_encode(tlv8_item *chain, uint8_t *destination) {
+    //Start from the start of the chain
+    while (chain->previous != nullptr){
+        chain = chain->previous;
+    }
+
+    while (chain != nullptr){
+        destination[0] = chain->type;
+        destination[1] = chain->length;
+        memcpy(&destination[2], chain->value, chain->length);
+        destination += chain->length + 2;
+        chain = chain->next;
+    }
 }
