@@ -44,6 +44,7 @@ struct tlv8_item {
     uint8_t offset;
 
     tlv8_item * previous;
+
     tlv8_item * next;
 };
 

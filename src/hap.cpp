@@ -4,3 +4,7 @@
 HomeKit::HomeKit() {
 
 }
+
+void HomeKit::_onRequestReceived(hap_network_connection *conn) {
+
+}

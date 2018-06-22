@@ -11,12 +11,44 @@
 extern "C" {
 #endif
 
-struct hap_network_connection {
-    void * raw;
+enum hap_http_method {
+    METHOD_UNKNOWN, GET, PUT, POST
+};
+
+enum hap_http_path {
+    PATH_UNKNOWN,
+    ACCESSORIES,
+    CHARACTERISTICS,
+    IDENTIFY,
+    PAIR_SETUP,
+    PAIR_VERIFY,
+    PAIRINGS
+};
+
+enum hap_http_content_type {
+    TYPE_UNKNOWN,
+    HAP_PAIRING_TLV8, // application/pairing+tlv8
+    HAP_JSON // application/hap+json
+};
+
+struct hap_http_description {
+    hap_http_method method = METHOD_UNKNOWN;
+    hap_http_path path = PATH_UNKNOWN;
+    const char * host = nullptr;
+    uint16_t status = 0;
+    unsigned int content_length = 0;
+    hap_http_content_type content_type = TYPE_UNKNOWN;
 };
 
 struct hap_user_connection {
-    hap_network_connection connection;
+    hap_http_description * header;
+    uint8_t * request_buffer;
+    unsigned int request_current_length;
+};
+
+struct hap_network_connection {
+    void * raw;
+    hap_user_connection * user;
 };
 
 /**
@@ -79,6 +111,13 @@ void hap_event_network_receive(hap_network_connection * client, const uint8_t * 
  * Called when connection is closed.
  */
 void hap_event_network_close(hap_network_connection * client);
+
+/**
+ * Delete the current request headers and buffers so we can receive more requests
+ *
+ * @param client
+ */
+void hap_network_flush(hap_network_connection * client);
 
 #ifdef __cplusplus
 }
