@@ -1,4 +1,4 @@
-#include "HomeKit.h"
+#include "HAPServer.h"
 
 #define HAP_TESTING
 #ifdef HAP_TESTING

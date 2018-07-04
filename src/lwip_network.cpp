@@ -215,4 +215,7 @@ void hap_network_close(hap_network_connection * client){
     delete client; //At last, we have to delete the memory allocated for the connection
 }
 
+//Since lwip_tcp is already event driven, leave empty in the loop
+void hap_network_loop(){ }
+
 #endif

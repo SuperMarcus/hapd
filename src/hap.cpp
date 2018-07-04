@@ -1,10 +1,14 @@
-#include "HomeKit.h"
+#include "HAPServer.h"
 #include "tlv.h"
 
-HomeKit::HomeKit() {
+HAPServer::HAPServer() {
 
 }
 
-void HomeKit::_onRequestReceived(hap_network_connection *conn) {
+void HAPServer::_onRequestReceived(hap_network_connection *conn) {
 
+}
+
+void HAPServer::_s_onRequestReceived(hap_network_connection *conn, void *arg) {
+    static_cast<HAPServer *>(arg)->_onRequestReceived(conn);
 }

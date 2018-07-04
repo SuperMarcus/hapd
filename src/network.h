@@ -48,6 +48,8 @@ struct hap_user_connection {
 
 struct hap_network_connection {
     void * raw;
+    void (*request_cb)(hap_network_connection *, void *);
+    void * request_cb_arg;
     hap_user_connection * user;
 };
 
@@ -90,6 +92,11 @@ extern bool hap_network_send(hap_network_connection * client, const uint8_t * da
 extern void hap_network_close(hap_network_connection * client);
 
 /**
+ * Polling off events from the network
+ */
+extern void hap_network_loop();
+
+/**
  * The following functions are designed to be called by network
  * implementations when an event is triggered.
  */
@@ -113,11 +120,18 @@ void hap_event_network_receive(hap_network_connection * client, const uint8_t * 
 void hap_event_network_close(hap_network_connection * client);
 
 /**
- * Delete the current request headers and buffers so we can receive more requests
+ * Delete the current request and response buffers so we can receive more requests
  *
  * @param client
  */
 void hap_network_flush(hap_network_connection * client);
+
+/**
+ * Send http response to the client
+ *
+ * @param client
+ */
+void hap_network_response(hap_network_connection * client);
 
 #ifdef __cplusplus
 }

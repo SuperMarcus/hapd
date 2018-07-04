@@ -3,7 +3,7 @@
 //
 
 #include "network.h"
-#include "HomeKit.h"
+#include "HAPServer.h"
 
 static const char _method_get[] PROGMEM = "GET";
 static const char _method_put[] PROGMEM = "PUT";
@@ -170,7 +170,7 @@ void hap_event_network_receive(hap_network_connection * client, const uint8_t * 
 
         //If we have read all the data we need
         if(user->request_current_length == user->header->content_length){
-            HomeKit::shared._onRequestReceived(client);
+            client->request_cb(client, client->request_cb_arg);
         }
     }
 }
