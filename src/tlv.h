@@ -66,7 +66,7 @@ tlv8_item * tlv8_parse(uint8_t * data, unsigned int length);
  * @param type
  * @return
  */
-tlv8_item * tlv8_find(tlv8_item * chain, tlv8_type type);
+tlv8_item * tlv8_find(tlv8_item * chain, tlv8_type type) __attribute((pure));
 
 /**
  * Find the item with the specific type after the given item.
@@ -75,7 +75,7 @@ tlv8_item * tlv8_find(tlv8_item * chain, tlv8_type type);
  * @param type
  * @return
  */
-tlv8_item * tlv8_find_next(tlv8_item * chain, tlv8_type type);
+tlv8_item * tlv8_find_next(tlv8_item * chain, tlv8_type type) __attribute((pure));
 
 /**
  * Read 'length' bytes of data from 'item' to 'buffer'. This will shift the
@@ -96,7 +96,7 @@ unsigned int tlv8_read(tlv8_item * item, uint8_t * buffer, unsigned int length);
  * @param item The tlv8 item
  * @return Length of the item
  */
-unsigned int tlv8_value_length(tlv8_item * item);
+unsigned int tlv8_value_length(tlv8_item * item) __attribute((pure));
 
 /**
  * Presume the number of bytes of tlv8_item after encodings given the length of
@@ -106,7 +106,7 @@ unsigned int tlv8_value_length(tlv8_item * item);
  * @param value_length Number of bytes of the value to be encoded
  * @return
  */
-unsigned int tlv8_item_length(unsigned int value_length);
+unsigned int tlv8_item_length(unsigned int value_length) __attribute((pure));
 
 /**
  * Get the total number of bytes of the chain after encoding. This function will
@@ -115,7 +115,7 @@ unsigned int tlv8_item_length(unsigned int value_length);
  * @param chain Any item in the chain
  * @return Number of bytes required to contain this chain.
  */
-unsigned int tlv8_chain_length(tlv8_item * chain);
+unsigned int tlv8_chain_length(tlv8_item * chain) __attribute((pure));
 
 /**
  * Free up the memory allocated to the parsed tlv8_item * chain, starts with the
