@@ -47,7 +47,7 @@ void hap_event_network_receive(hap_network_connection * client, const uint8_t * 
     if(user->header == nullptr){
         //Fail if length is smaller than 125
         if(length < 125){
-            HAP_DEBUG("[net] Header length too short. Ignoring current packet.\n");
+            HAP_DEBUG("Header length too short. Ignoring current packet.");
             return;
         }
 
@@ -68,7 +68,7 @@ void hap_event_network_receive(hap_network_connection * client, const uint8_t * 
             user->header->method = POST;
             data += strlen_P(_method_post) + 1;
         } else {
-            HAP_DEBUG("[net] Unknown request method. Ignoring current packet.\n");
+            HAP_DEBUG("Unknown request method. Ignoring current packet.");
             delete user->header;
             user->header = nullptr;
             return;
@@ -96,7 +96,7 @@ void hap_event_network_receive(hap_network_connection * client, const uint8_t * 
             data += strlen_P(_path_pairings);
         } else {
             //TODO: send 404
-            HAP_DEBUG("[net] Unacceptable request path. Ignoring current packet.\n");
+            HAP_DEBUG("Unacceptable request path. Ignoring current packet.");
             delete user->header;
             user->header = nullptr;
             return;
@@ -135,7 +135,7 @@ void hap_event_network_receive(hap_network_connection * client, const uint8_t * 
                     user->header->content_type = HAP_PAIRING_TLV8;
                 else if(strncasecmp_P(value, _ctype_json, strlen_P(_ctype_json)) == 0)
                     user->header->content_type = HAP_JSON;
-                else HAP_DEBUG("[net] unknown content type: %s\n", value);
+                else HAP_DEBUG("unknown content type: %s", value);
             }else if(strncasecmp_P(key, _header_host, strlen_P(_header_host)) == 0){
                 auto bufLen = strlen(value) + 1;
                 auto hostBuf = new char[bufLen]();

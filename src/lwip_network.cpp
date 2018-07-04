@@ -44,7 +44,7 @@ err_t _hap_lwip_abort(struct tcp_pcb * pcb){
  */
 err_t _hap_lwip_close(struct tcp_pcb * pcb){
     if(pcb){
-        HAP_DEBUG("[lwip] Closing connection %08x:%u\n", pcb->remote_ip, pcb->remote_port);
+        HAP_DEBUG("Closing connection %08x:%u", pcb->remote_ip, pcb->remote_port);
 
         tcp_arg(pcb, nullptr);
         tcp_sent(pcb, nullptr);
@@ -74,7 +74,7 @@ err_t hap_lwip_receive(void * client, struct tcp_pcb * tpcb, struct pbuf * buffe
         while (buffer != nullptr){
             current = buffer;
 
-//            HAP_DEBUG("[lwip] Read %u bytes from %08x:%u\n", current->len, tpcb->remote_ip, tpcb->remote_port);
+//            HAP_DEBUG("Read %u bytes from %08x:%u", current->len, tpcb->remote_ip, tpcb->remote_port);
             tcp_recved(HAPCONN_PCB(hapconn), buffer->len);
             hap_event_network_receive(hapconn, static_cast<const uint8_t *>(current->payload), current->len);
 
@@ -109,7 +109,7 @@ err_t hap_lwip_poll(void * client, struct tcp_pcb *tpcb){
  * @param err Error code
  */
 void hap_lwip_error(void * client, err_t err){
-    HAP_DEBUG("[lwip] lwip error: %ld\n", err);
+    HAP_DEBUG("lwip error: %ld", err);
 }
 
 /**
@@ -137,7 +137,7 @@ err_t hap_lwip_accept(void * conn, tcp_pcb * pcb, err_t err){
 
     hap_event_network_accept(client_conn);
 
-    HAP_DEBUG("[lwip] New connection accepted: %08x:%u.\n", pcb->remote_ip, pcb->remote_port);
+    HAP_DEBUG("New connection accepted: %08x:%u.", pcb->remote_ip, pcb->remote_port);
 
     return ERR_OK;
 }
@@ -162,14 +162,14 @@ bool hap_network_init_bind(hap_network_connection * conn, uint16_t port){
 
     err = tcp_bind(pcb, HAPLWIP_BIND_ADDR, port);
     if(err != ERR_OK){
-        HAP_DEBUG("[lwip] Failed to bind pcb\n");
+        HAP_DEBUG("Failed to bind pcb");
         tcp_close(pcb);
         return false;
     }
 
     conn->raw = tcp_listen(pcb);
     if(!conn->raw){
-        HAP_DEBUG("[lwip] Failed to listen\n");
+        HAP_DEBUG("Failed to listen");
         tcp_close(pcb);
         return false;
     }
@@ -177,7 +177,7 @@ bool hap_network_init_bind(hap_network_connection * conn, uint16_t port){
     tcp_arg(HAPCONN_PCB(conn), conn);
     tcp_accept(HAPCONN_PCB(conn), &hap_lwip_accept);
 
-    HAP_DEBUG("[lwip] New socket binded to port: %u\n", port);
+    HAP_DEBUG("New socket binded to port: %u", port);
 
     return true;
 }
@@ -192,13 +192,13 @@ bool hap_network_init_bind(hap_network_connection * conn, uint16_t port){
 bool hap_network_send(hap_network_connection * client, const uint8_t * data, unsigned int length){
     auto err = tcp_write(HAPCONN_PCB(client), data, static_cast<u16_t>(length), 0);
     if(err != ERR_OK){
-        HAP_DEBUG("[lwip] Unable to write data to buffer: %ld\n", err);
+        HAP_DEBUG("Unable to write data to buffer: %ld", err);
         return false;
     }
 
     err = tcp_output(HAPCONN_PCB(client));
     if(err != ERR_OK){
-        HAP_DEBUG("[lwip] Unable to send packet: %ld\n", err);
+        HAP_DEBUG("Unable to send packet: %ld", err);
         return false;
     }
 

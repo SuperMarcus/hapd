@@ -11,7 +11,7 @@
 
 #ifndef HAP_DEBUG
 #include <HardwareSerial.h>
-#define HAP_DEBUG Serial.printf
+#define HAP_DEBUG(message, ...) Serial.printf(__FILE__ ":%d [%s] " message "\n", __LINE__, __FUNCTION__, ##__VA_ARGS__)
 #endif
 
 #ifndef HAP_LWIP_TCP_NODELAY
