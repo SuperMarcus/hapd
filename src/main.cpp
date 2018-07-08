@@ -1,6 +1,7 @@
 #include "HAPServer.h"
 
-#define HAP_TESTING
+//#define HAP_TESTING
+#define HAP_TESTING_NATIVE
 #ifdef HAP_TESTING
 
 void testLwipNetwork(){
@@ -42,6 +43,14 @@ void _setup(){
         Serial.printf("[wifi] Waiting for network connection...\n");
         delay(2000);
     }
+}
+
+#endif
+
+#ifdef HAP_TESTING_NATIVE
+
+int main(){
+    printf("hap test");
 }
 
 #endif

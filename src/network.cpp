@@ -5,6 +5,8 @@
 #include "network.h"
 #include "HAPServer.h"
 
+#include <cstring>
+
 static const char _method_get[] PROGMEM = "GET";
 static const char _method_put[] PROGMEM = "PUT";
 static const char _method_post[] PROGMEM = "POST";
@@ -38,10 +40,9 @@ void hap_event_network_accept(hap_network_connection * client){
  */
 void hap_event_network_receive(hap_network_connection * client, const uint8_t * originalData, unsigned int length){
     auto user = client->user;
-    auto data = reinterpret_cast<const char *>(originalData);
+    auto data = originalData;
 
-#define CMP_PROGSTR_PTR(prog) (strncasecmp_P(data, prog, strlen_P(prog)) == 0)
-#define _UI(v) reinterpret_cast<unsigned int>(v)
+#define CMP_PROGSTR_PTR(prog) (strncasecmp_P(reinterpret_cast<const char *>(data), prog, strlen_P(prog)) == 0)
 
     // If header has been not received, it means its time to create a new request!
     if(user->header == nullptr){
@@ -104,9 +105,9 @@ void hap_event_network_receive(hap_network_connection * client, const uint8_t * 
 
         data += 11;//Skip the " HTTP/1.1\r\n"
 
-        while((_UI(data) - _UI(originalData)) < length){
+        while((data - originalData) < length){
             //End of header section
-            if((_UI(data) + 1 - _UI(originalData)) < length && *data == '\r' && *(data + 1) == '\n'){
+            if((data + 1 - originalData) < length && *data == '\r' && *(data + 1) == '\n'){
                 break;
             }
 
@@ -114,14 +115,14 @@ void hap_event_network_receive(hap_network_connection * client, const uint8_t * 
             auto value = new char[64]();
 
             auto keyPtr = key;
-            while(*data != ':' && (_UI(data) - _UI(originalData)) < length){
+            while(*data != ':' && (data - originalData) < length){
                 *keyPtr = *data;
                 ++keyPtr;
                 ++data;
             }
 
             auto valPtr = value;
-            while((_UI(data) + 1 - _UI(originalData)) < length && *data != '\r' && *(data + 1) != '\n'){
+            while((data + 1 - originalData) < length && *data != '\r' && *(data + 1) != '\n'){
                 *valPtr = *data;
                 ++valPtr;
                 ++data;
@@ -161,7 +162,7 @@ void hap_event_network_receive(hap_network_connection * client, const uint8_t * 
     }
 
     //If we have more data, append to the buffer
-    auto available = _UI(data) - _UI(originalData);
+    auto available = data - originalData;
     auto needed = user->header->content_length - user->request_current_length;
     if(available > 0){
         auto copyLength = available > needed ? needed : available;

@@ -2,13 +2,9 @@
  * Network implementation for lwip
  */
 
-#include <Arduino.h>
+#include <common.h>
 
-//We know esp8266 has lwip, so enable this by default for esp8266
-
-#if !defined(NO_BUILTIN_NETWORK_IMPLEMENTATION) && \
-    defined(CORE_ESP8266_FEATURES_H) || \
-    defined(USE_HAP_LWIP)
+#if defined(USE_HAP_LWIP)
 
 #include "network.h"
 #include "common.h"

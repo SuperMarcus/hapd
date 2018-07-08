@@ -1,5 +1,3 @@
-#include <Arduino.h>
-
 #include "network.h"
 #include "tlv.h"
 
