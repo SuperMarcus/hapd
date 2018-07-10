@@ -2,12 +2,11 @@
  * Network implementation for lwip
  */
 
-#include <common.h>
+#include "common.h"
 
 #if defined(USE_HAP_LWIP)
 
 #include "network.h"
-#include "common.h"
 
 extern "C" {
 #include <lwip/tcp.h>
@@ -121,7 +120,7 @@ err_t hap_lwip_accept(void * conn, tcp_pcb * pcb, err_t err){
     client_conn->raw = pcb;
 
     tcp_accepted(HAPCONN_PCB(client_conn));
-#if HAP_LWIP_TCP_NODELAY
+#if HAP_SOCK_TCP_NODELAY
     tcp_nagle_disable(HAPCONN_PCB(client_conn));
 #else
     tcp_nagle_enable(HAPCONN_PCB(client_conn));
@@ -131,7 +130,7 @@ err_t hap_lwip_accept(void * conn, tcp_pcb * pcb, err_t err){
     tcp_err(HAPCONN_PCB(client_conn), &hap_lwip_error);
     tcp_poll(HAPCONN_PCB(client_conn), &hap_lwip_poll, 1);
 
-    hap_event_network_accept(client_conn);
+    hap_event_network_accept(static_cast<hap_network_connection*>(conn), client_conn);
 
     HAP_DEBUG("New connection accepted: %08x:%u.", pcb->remote_ip, pcb->remote_port);
 

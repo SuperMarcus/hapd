@@ -11,6 +11,10 @@
 extern "C" {
 #endif
 
+enum hap_msg_type {
+    HTTP_1_1, EVENT_1_0
+};
+
 enum hap_http_method {
     METHOD_UNKNOWN, GET, PUT, POST
 };
@@ -31,19 +35,25 @@ enum hap_http_content_type {
     HAP_JSON // application/hap+json
 };
 
+//Contains all the headers needed
 struct hap_http_description {
+    hap_msg_type message_type = HTTP_1_1;
     hap_http_method method = METHOD_UNKNOWN;
     hap_http_path path = PATH_UNKNOWN;
     const char * host = nullptr;
-    uint16_t status = 0;
+    uint16_t status = 204;//Default to 204 no content
     unsigned int content_length = 0;
     hap_http_content_type content_type = TYPE_UNKNOWN;
 };
 
+//Contains information for requests & responses
 struct hap_user_connection {
-    hap_http_description * header;
+    hap_http_description * request_header;
     uint8_t * request_buffer;
     unsigned int request_current_length;
+
+    hap_http_description * response_header;
+    uint8_t * response_buffer;
 };
 
 struct hap_network_connection {
@@ -104,7 +114,7 @@ extern void hap_network_loop();
 /**
  * Called when a new TCP connection is being accepted.
  */
-void hap_event_network_accept(hap_network_connection * client);
+void hap_event_network_accept(hap_network_connection * server, hap_network_connection * client);
 
 /**
  * Called when data is received.

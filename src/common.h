@@ -17,15 +17,19 @@
 #include <HardwareSerial.h>
 #define HAP_DEBUG(message, ...) Serial.printf(__FILE__ ":%d [%s] " message "\n", __LINE__, __FUNCTION__, ##__VA_ARGS__)
 #elif defined(USE_PRINTF)
-#include <stdio.h>
+#include <cstdio>
 #define HAP_DEBUG(message, ...) fprintf(stdout, __FILE__ ":%d [%s] " message "\n", __LINE__, __FUNCTION__, ##__VA_ARGS__)
 #endif
 
 #endif
 
-#ifndef HAP_LWIP_TCP_NODELAY
+#ifndef HAP_SOCK_TCP_NODELAY
 //Set to 0 to disable tcp nodelay
-#define HAP_LWIP_TCP_NODELAY 1
+#define HAP_SOCK_TCP_NODELAY 1
+#endif
+
+#ifndef HAP_NOTHING
+#define HAP_NOTHING
 #endif
 
 #endif //ARDUINOHOMEKIT_COMMON_H
