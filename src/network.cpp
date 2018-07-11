@@ -64,6 +64,12 @@ void hap_event_network_receive(hap_network_connection *client, const uint8_t *or
     auto user = client->user;
     auto data = originalData;
 
+    if(user->response_header && user->response_header->content_length == user->request_current_length){
+        HAP_DEBUG("Not flushed when new data arrives. Cleaning right now.");
+        //Clean buffer before creating new ones
+        hap_network_flush(client);
+    }
+
 #define CMP_PROGSTR_PTR(prog) (strncasecmp_P(reinterpret_cast<const char *>(data), prog, strlen_P(prog)) == 0)
 
     // If request_header has been not received, it means its time to create a new request!

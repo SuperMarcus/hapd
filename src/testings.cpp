@@ -10,8 +10,12 @@ int main(){
 
     HomeKitAccessory.begin();
 
+    HomeKitAccessory.on(HAPEvent::DUMMY, [](HAPEvent * event){
+
+    });
+
     while (1){
-        hap_network_loop();
+        HomeKitAccessory.handle();
         usleep(2e4);
     }
 }

@@ -4,6 +4,8 @@
 class HAPUserHelper {
 public:
     explicit HAPUserHelper(hap_network_connection * conn);
+    ~HAPUserHelper();
+
     void setResponseStatus(int status);
     void setResponseType(hap_msg_type type);
     void setContentType(hap_http_content_type responseCtype);
@@ -46,7 +48,7 @@ public:
 
     //node-like event system but non-blocking so no wdt triggers :D
     void on(HAPEvent::EventID, HAPEventListener::Callback);
-    void emit(HAPEvent::EventID, void * args = nullptr, HAPEventListener::Callback onCompletion);
+    void emit(HAPEvent::EventID, void * args = nullptr, HAPEventListener::Callback onCompletion = nullptr);
 
 private:
     friend void hap_event_network_receive(hap_network_connection *, const uint8_t *, unsigned int);

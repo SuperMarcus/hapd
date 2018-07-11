@@ -13,7 +13,10 @@ void HAPServer::_onRequestReceived(hap_network_connection * conn) {
     request->setContentType(HAP_JSON);
     request->send(data);
 
-    delete request;
+    this->emit(HAPEvent::DUMMY, request, [](HAPEvent * event){
+        auto req = static_cast<HAPUserHelper *>(event->argument);
+        delete req;
+    });
 }
 
 void HAPServer::_s_onRequestReceived(hap_network_connection *conn, void *arg) {
@@ -36,15 +39,17 @@ void HAPServer::handle() {
 
     //handle events
     auto currentEvent = _dequeueEvent();
-    auto currentListener = eventListeners;
-    while (currentListener != nullptr){
-        if(currentListener->listening == currentEvent->name){
-            (*currentListener)(currentEvent);
+    if(currentEvent){
+        auto currentListener = eventListeners;
+        while (currentListener != nullptr){
+            if(currentListener->listening == currentEvent->name){
+                (*currentListener)(currentEvent);
+            }
+            currentListener = currentListener->next;
         }
-        currentListener = currentListener->next;
+        if(currentEvent->didEmit) currentEvent->didEmit(currentEvent);
+        delete currentEvent;
     }
-    if(currentEvent->didEmit) currentEvent->didEmit(currentEvent);
-    delete currentEvent;
 }
 
 void HAPServer::_clearEventQueue() {
@@ -117,6 +122,13 @@ void HAPUserHelper::send(const char *body, int contentLength) {
 
 void HAPUserHelper::setContentType(hap_http_content_type ctype) {
     conn->user->response_header->content_type = ctype;
+}
+
+HAPUserHelper::~HAPUserHelper() {
+    //Clean buffer after helper is destroyed
+    hap_network_flush(conn);
+    conn = nullptr;
+    HAP_DEBUG("Session finished.");
 }
 
 void HAPEventListener::operator()(HAPEvent * e) {
