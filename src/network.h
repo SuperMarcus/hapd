@@ -129,6 +129,13 @@ extern void * hap_service_discovery_init(const char * name, uint16_t port);
 extern bool hap_service_discovery_update(void *, hap_sd_txt_item *);
 
 /**
+ * Terminate mDNS broadcast
+ *
+ * Called when HAPServer instance is destroyed
+ */
+extern void hap_service_discovery_deinit(void *);
+
+/**
  * The following functions are designed to be called by network
  * implementations when an event is triggered, or used by HAPServer for
  * request handling.

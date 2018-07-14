@@ -2,6 +2,7 @@
 
 class HAPServer;
 class HAPUserHelper;
+class HAPPairingsManager;
 struct HAPEvent;
 struct HAPEventListener;
 
@@ -55,6 +56,7 @@ private:
 
 class HAPServer {
 public:
+    ~HAPServer();
     void begin(uint16_t port = 5001);
     void handle();
 
@@ -77,6 +79,7 @@ private:
     hap_network_connection * server_conn = nullptr;
     HAPEvent * eventQueue = nullptr;
     HAPEventListener * eventListeners = nullptr;
+    HAPPairingsManager * pairingsManager = nullptr;
 
     void * mdns_handle = nullptr;
     const char * deviceName = "HomeKit Device";

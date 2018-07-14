@@ -117,3 +117,7 @@ void HAPServer::_updateSDRecords(HAPEvent *) {
     };
     hap_service_discovery_update(mdns_handle, records);
 }
+
+HAPServer::~HAPServer() {
+
+}

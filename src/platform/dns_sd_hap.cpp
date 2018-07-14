@@ -7,9 +7,9 @@
 #include "../network.h"
 
 void * hap_service_discovery_init(const char * name, uint16_t port){
-    auto ref = new DNSServiceRef();
+    auto ref = DNSServiceRef();
     auto ret = DNSServiceRegister(
-            ref, 0, 0, name, "_hap._tcp",
+            &ref, 0, 0, name, "_hap._tcp",
             nullptr, nullptr, htons(port),
             0, nullptr, nullptr, nullptr
     );
@@ -19,7 +19,7 @@ void * hap_service_discovery_init(const char * name, uint16_t port){
 }
 
 bool hap_service_discovery_update(void * handle, hap_sd_txt_item * records){
-    auto ref = reinterpret_cast<DNSServiceRef *>(handle);
+    auto ref = reinterpret_cast<DNSServiceRef>(handle);
     auto bufLen = 0;
     auto current = records;
     while (current->key != nullptr){
@@ -40,10 +40,16 @@ bool hap_service_discovery_update(void * handle, hap_sd_txt_item * records){
         bufPtr += vLen;
         current++;
     }
-    auto ret = DNSServiceUpdateRecord(*ref, nullptr, 0, static_cast<uint16_t>(bufLen), buf, 0);
+    auto ret = DNSServiceUpdateRecord(ref, nullptr, 0, static_cast<uint16_t>(bufLen), buf, 0);
+    delete[] buf;
     if(ret == kDNSServiceErr_NoError) return true;
     HAP_DEBUG("Unable to update sd records: %d", ret);
     return false;
+}
+
+void hap_service_discovery_deinit(void * handle){
+    auto ref = reinterpret_cast<DNSServiceRef>(handle);
+    DNSServiceRefDeallocate(ref);
 }
 
 #endif
