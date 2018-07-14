@@ -1,4 +1,4 @@
-#include "HAPServer.h"
+#include "HomeKitAccessory.h"
 
 #ifdef HAP_NATIVE_DEBUG_ENV
 
@@ -8,14 +8,10 @@
 int main(){
     HAP_DEBUG("Testing HAP with native socket...");
 
-    HomeKitAccessory.begin();
-
-    HomeKitAccessory.on(HAPEvent::DUMMY, [](HAPEvent * event){
-
-    });
+    HKAccessory.begin();
 
     while (1){
-        HomeKitAccessory.handle();
+        HKAccessory.handle();
         usleep(2e4);
     }
 }

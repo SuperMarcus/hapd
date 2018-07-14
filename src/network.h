@@ -63,6 +63,11 @@ struct hap_network_connection {
     hap_user_connection * user;
 };
 
+struct hap_sd_txt_item {
+    const char * key;
+    const char * value;
+};
+
 /**
  * For future ports to other platforms, the following functions are designed
  * to be implemented by platforms.
@@ -107,8 +112,26 @@ extern void hap_network_close(hap_network_connection * client);
 extern void hap_network_loop();
 
 /**
+ * Init mDNS service discover
+ *
+ * The implementation should register the hap service and return the service ref
+ *
+ * @param name of the accessory
+ * @return null if an error occurs; otherwise a pointer to the data structure that the implementation use
+ */
+extern void * hap_service_discovery_init(const char * name, uint16_t port);
+
+/**
+ * Update mDNS service
+ *
+ * @param Point to the handle returned by hap_service_discovery_init()
+ */
+extern bool hap_service_discovery_update(void *, hap_sd_txt_item *);
+
+/**
  * The following functions are designed to be called by network
- * implementations when an event is triggered.
+ * implementations when an event is triggered, or used by HAPServer for
+ * request handling.
  */
 
 /**

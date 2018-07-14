@@ -1,4 +1,4 @@
-#include "common.h"
+#include "../common.h"
 
 /**
  * A non-blocking wrapper of bsd socket with hap network compliance
@@ -7,7 +7,7 @@
  */
 #ifdef USE_HAP_NATIVE_SOCKET
 
-#include "network.h"
+#include "../network.h"
 
 #include <cerrno>
 #include <sys/types.h>

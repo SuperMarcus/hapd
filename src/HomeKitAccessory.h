@@ -1,5 +1,9 @@
 #include "network.h"
-#include "tlv.h"
+
+class HAPServer;
+class HAPUserHelper;
+struct HAPEvent;
+struct HAPEventListener;
 
 class HAPUserHelper {
 public:
@@ -19,9 +23,13 @@ private:
 };
 
 struct HAPEvent {
+public:
     enum EventID {
-        DUMMY
+        DUMMY,
+        HAP_SD_NEEDED_UPDATE
     };
+private:
+    friend class HAPServer;
 
     EventID name = DUMMY;
     void * argument = nullptr;
@@ -31,14 +39,18 @@ struct HAPEvent {
 };
 
 struct HAPEventListener {
+public:
     typedef void (* Callback)(HAPEvent *);
+    typedef void (HAPServer::*HAPCallback)(HAPEvent *);
+
+private:
+    friend class HAPServer;
 
     HAPEvent::EventID listening = HAPEvent::DUMMY;
     Callback onEvent = nullptr;
+    HAPCallback _internalOnEvent = nullptr;
 
     HAPEventListener * next = nullptr;
-
-    void operator ()(HAPEvent *);
 };
 
 class HAPServer {
@@ -47,20 +59,33 @@ public:
     void handle();
 
     //node-like event system but non-blocking so no wdt triggers :D
-    void on(HAPEvent::EventID, HAPEventListener::Callback);
+    HAPEventListener * on(HAPEvent::EventID, HAPEventListener::Callback);
     void emit(HAPEvent::EventID, void * args = nullptr, HAPEventListener::Callback onCompletion = nullptr);
 
 private:
     friend void hap_event_network_receive(hap_network_connection *, const uint8_t *, unsigned int);
     static void _s_onRequestReceived(hap_network_connection * conn, void * arg);
 
+    HAPEventListener * _onSelf(HAPEvent::EventID, HAPEventListener::HAPCallback);
     void _onRequestReceived(hap_network_connection * conn);
     void _clearEventQueue();
+    void _clearEventListeners();
     HAPEvent * _dequeueEvent();
+
+    void _updateSDRecords(HAPEvent *);
 
     hap_network_connection * server_conn = nullptr;
     HAPEvent * eventQueue = nullptr;
     HAPEventListener * eventListeners = nullptr;
+
+    void * mdns_handle = nullptr;
+    const char * deviceName = "HomeKit Device";
+    const char * deviceId = "F6:A4:35:E3:0A:E2";
+    const char * modelName = "HomeKitDevice1,1";
 };
 
-extern HAPServer HomeKitAccessory;
+class HAPPairingsManager {
+
+};
+
+extern HAPServer HKAccessory;

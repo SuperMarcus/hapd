@@ -2,11 +2,11 @@
  * Network implementation for lwip
  */
 
-#include "common.h"
+#include "../common.h"
 
 #if defined(USE_HAP_LWIP)
 
-#include "network.h"
+#include "../network.h"
 
 extern "C" {
 #include <lwip/tcp.h>

@@ -3,7 +3,7 @@
 //
 
 #include "network.h"
-#include "HAPServer.h"
+#include "HomeKitAccessory.h"
 
 #include <cstring>
 #include <cmath>
