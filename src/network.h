@@ -56,10 +56,10 @@ struct hap_user_connection {
     uint8_t * response_buffer;
 };
 
+class HAPServer;
 struct hap_network_connection {
     void * raw;
-    void (*request_cb)(hap_network_connection *, void *);
-    void * request_cb_arg;
+    HAPServer * server;
     hap_user_connection * user;
 };
 
@@ -156,6 +156,9 @@ void hap_event_network_receive(hap_network_connection * client, const uint8_t * 
 
 /**
  * Called when connection is closed.
+ *
+ * This handler should be called both when the client and the server
+ * initiate the shutdown.
  */
 void hap_event_network_close(hap_network_connection * client);
 

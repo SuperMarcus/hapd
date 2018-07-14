@@ -26,7 +26,29 @@ private:
 struct HAPEvent {
 public:
     enum EventID {
-        DUMMY,
+        /**
+         * Nothing and shouldn't be triggered in production
+         */
+        DUMMY = 0,
+
+        /**
+         * Triggered when new data from client is received.
+         */
+        HAP_NET_RECEIVE_REQUEST,
+
+        /**
+         * Triggered when a client is disconnected from the server
+         * Called both when the client disconnects from the server and the
+         * server disconnects the client.
+         */
+        HAP_NET_DISCONNECT,
+
+        /**
+         * Triggered when the parameters of the server have updated and the
+         * mDNS service discovery needs to be updated as well.
+         *
+         * Handled internally by HAPServer
+         */
         HAP_SD_NEEDED_UPDATE
     };
 private:
@@ -65,11 +87,8 @@ public:
     void emit(HAPEvent::EventID, void * args = nullptr, HAPEventListener::Callback onCompletion = nullptr);
 
 private:
-    friend void hap_event_network_receive(hap_network_connection *, const uint8_t *, unsigned int);
-    static void _s_onRequestReceived(hap_network_connection * conn, void * arg);
-
     HAPEventListener * _onSelf(HAPEvent::EventID, HAPEventListener::HAPCallback);
-    void _onRequestReceived(hap_network_connection * conn);
+    void _onRequestReceived(HAPEvent * conn);
     void _clearEventQueue();
     void _clearEventListeners();
     HAPEvent * _dequeueEvent();

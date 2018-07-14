@@ -50,8 +50,7 @@ void hap_event_network_accept(hap_network_connection *server, hap_network_connec
     user->request_buffer = nullptr;
     user->request_header = nullptr;
     client->user = user;
-    client->request_cb = server->request_cb;
-    client->request_cb_arg = server->request_cb_arg;
+    client->server = server->server;
 }
 
 /**
@@ -217,7 +216,7 @@ void hap_event_network_receive(hap_network_connection *client, const uint8_t *or
 
         //If we have read all the data we need
         if (user->request_current_length == user->request_header->content_length) {
-            client->request_cb(client, client->request_cb_arg);
+            client->server->emit(HAPEvent::HAP_NET_RECEIVE_REQUEST, client);
         }
     }
 }
@@ -226,6 +225,7 @@ void hap_event_network_receive(hap_network_connection *client, const uint8_t *or
  * Called when connection is closed.
  */
 void hap_event_network_close(hap_network_connection *client) {
+    client->server->emit(HAPEvent::HAP_NET_DISCONNECT, client);
     hap_network_flush(client);
     delete client->user;
     client->user = nullptr;

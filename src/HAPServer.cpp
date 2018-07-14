@@ -3,27 +3,17 @@
 
 HAPServer HKAccessory;
 
-void HAPServer::_onRequestReceived(hap_network_connection * conn) {
-    auto req = new HAPUserHelper(conn);
-
-    delete req;
-}
-
-void HAPServer::_s_onRequestReceived(hap_network_connection *conn, void *arg) {
-    static_cast<HAPServer *>(arg)->_onRequestReceived(conn);
-}
-
 void HAPServer::begin(uint16_t port) {
     _clearEventListeners();
     _clearEventQueue();
 
     _onSelf(HAPEvent::HAP_SD_NEEDED_UPDATE, &HAPServer::_updateSDRecords);
+    _onSelf(HAPEvent::HAP_NET_RECEIVE_REQUEST, &HAPServer::_onRequestReceived);
 
     server_conn = new hap_network_connection;
     server_conn->raw = nullptr;
     server_conn->user = nullptr;
-    server_conn->request_cb_arg = this;
-    server_conn->request_cb = &HAPServer::_s_onRequestReceived;
+    server_conn->server = this;
 
     hap_network_init_bind(server_conn, port);
     mdns_handle = hap_service_discovery_init(deviceName, port);
@@ -48,6 +38,12 @@ void HAPServer::handle() {
         if(currentEvent->didEmit) currentEvent->didEmit(currentEvent);
         delete currentEvent;
     }
+}
+
+void HAPServer::_onRequestReceived(HAPEvent * e) {
+    auto req = new HAPUserHelper(static_cast<hap_network_connection*>(e->argument));
+
+    delete req;
 }
 
 void HAPServer::_clearEventQueue() {
@@ -119,5 +115,6 @@ void HAPServer::_updateSDRecords(HAPEvent *) {
 }
 
 HAPServer::~HAPServer() {
-
+    hap_service_discovery_deinit(mdns_handle);
+    mdns_handle = nullptr;
 }
