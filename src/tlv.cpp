@@ -2,6 +2,7 @@
 // Created by Xule Zhou on 6/4/18.
 //
 
+#include "common.h"
 #include "tlv.h"
 #include <cstring>
 
@@ -43,7 +44,7 @@ void tlv8_free(tlv8_item *chain) {
     }
 }
 
-tlv8_item *tlv8_find(tlv8_item *chain, tlv8_type type) {
+const tlv8_item *tlv8_find(const tlv8_item *chain, tlv8_type type) {
     //Start searching from the start of the chain
     while (chain->previous != nullptr){
         chain = chain->previous;
@@ -52,7 +53,7 @@ tlv8_item *tlv8_find(tlv8_item *chain, tlv8_type type) {
     return tlv8_find_next(chain, type);
 }
 
-tlv8_item *tlv8_find_next(tlv8_item *chain, tlv8_type type) {
+const tlv8_item *tlv8_find_next(const tlv8_item *chain, tlv8_type type) {
     while (chain != nullptr && chain->type != type){
         chain = chain->next;
     }
@@ -89,7 +90,7 @@ unsigned int tlv8_read(tlv8_item *item, uint8_t *buffer, unsigned int length) {
     return read;
 }
 
-unsigned int tlv8_value_length(tlv8_item *item) {
+unsigned int tlv8_value_length(const tlv8_item *item) {
     unsigned int length = item->length;
     while (item->next->type == item->type){
         item = item->next;
@@ -102,7 +103,7 @@ unsigned int tlv8_item_length(unsigned int value_length) {
     return value_length + (value_length / 255 + 1) * 2;
 }
 
-unsigned int tlv8_chain_length(tlv8_item *chain) {
+unsigned int tlv8_chain_length(const tlv8_item *chain) {
     unsigned int length = 0;
 
     //Start from the start of the chain
@@ -112,6 +113,7 @@ unsigned int tlv8_chain_length(tlv8_item *chain) {
 
     //Iterates the chain and adds up the lengths of each item
     while (chain != nullptr){
+        length += 2;
         length += chain->length;
         chain = chain->next;
     }
@@ -125,9 +127,10 @@ void tlv8_detach(tlv8_item *item) {
     delete item;
 }
 
-tlv8_item *tlv8_insert(tlv8_item *chain, tlv8_type type, unsigned int length, uint8_t *data) {
+tlv8_item *tlv8_insert(tlv8_item *chain, tlv8_type type, unsigned int length, const void * rdata) {
     auto start_item = new tlv8_item();
     auto current_item = start_item;
+    auto data = reinterpret_cast<const uint8_t *>(rdata);
 
     int _len = length;
 
@@ -135,7 +138,7 @@ tlv8_item *tlv8_insert(tlv8_item *chain, tlv8_type type, unsigned int length, ui
         auto current_length = static_cast<uint8_t>(_len > 255 ? 255 : _len);
         current_item->type = type;
         current_item->length = current_length;
-        current_item->value = data;
+        current_item->value = const_cast<uint8_t *>(data);
         current_item->offset = 0;
 
         _len -= current_length;
@@ -184,17 +187,33 @@ void tlv8_reset_chain(tlv8_item *chain) {
     }
 }
 
-void tlv8_encode(tlv8_item *chain, uint8_t *destination) {
+void tlv8_encode(const tlv8_item *chain, uint8_t *destination) {
     //Start from the start of the chain
     while (chain->previous != nullptr){
         chain = chain->previous;
     }
 
     while (chain != nullptr){
+        //TODO
+        HAP_DEBUG("Encoding id %d len %d", chain->type, chain->length);
         destination[0] = chain->type;
         destination[1] = chain->length;
         memcpy(&destination[2], chain->value, chain->length);
         destination += chain->length + 2;
         chain = chain->next;
     }
+}
+
+uint8_t *tlv8_export_free(tlv8_item * chain, unsigned int * exportedLength) {
+    //Start from the start of the chain
+    while (chain->previous != nullptr){
+        chain = chain->previous;
+    }
+
+    *exportedLength = tlv8_chain_length(chain);
+    auto buf = new uint8_t[*exportedLength];
+    tlv8_encode(chain, buf);
+    tlv8_free(chain);
+
+    return buf;
 }

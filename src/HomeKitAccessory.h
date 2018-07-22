@@ -1,4 +1,4 @@
-#include "network.h"
+#include "common.h"
 
 class HAPServer;
 class HAPUserHelper;
@@ -6,10 +6,25 @@ class HAPPairingsManager;
 struct HAPEvent;
 struct HAPEventListener;
 
+struct hap_pair_info;
+struct tlv8_item;
+
 class HAPUserHelper {
 public:
     explicit HAPUserHelper(hap_network_connection * conn);
     ~HAPUserHelper();
+
+    //simple arc
+    void retain();
+    void release();
+
+    template <typename T = uint8_t *>
+    T data(){ return static_cast<T>(conn->user->request_buffer); }
+    unsigned int dataLength();
+    hap_http_path path();
+    hap_http_method method();
+    hap_http_content_type requestContentType();
+    hap_pair_info * pairInfo();
 
     void setResponseStatus(int status);
     void setResponseType(hap_msg_type type);
@@ -17,10 +32,14 @@ public:
     void setBody(const void * body = nullptr, unsigned int contentLength = 0);
     void send(const char * body, int contentLength = -1);
     void send(const void * body = nullptr, unsigned int contentLength = 0);
-    void send(int status, hap_msg_type type = HTTP_1_1);
+    void send(tlv8_item * body);
+    void send(int status, hap_msg_type type = MESSAGE_TYPE_UNKNOWN);
+
+    void close();
 
 private:
     hap_network_connection * conn;
+    unsigned int refCount;
 };
 
 struct HAPEvent {
@@ -30,6 +49,11 @@ public:
          * Nothing and shouldn't be triggered in production
          */
         DUMMY = 0,
+
+        /**
+         * Triggered when new connection is established
+         */
+        HAP_NET_CONNECT,
 
         /**
          * Triggered when new data from client is received.
@@ -49,8 +73,21 @@ public:
          *
          * Handled internally by HAPServer
          */
-        HAP_SD_NEEDED_UPDATE
+        HAP_SD_NEEDED_UPDATE,
+
+        /**
+         * The followings are cryptography yields. Nothing besides
+         * HAPPairingsManager and crypto impl should listen to
+         * those events.
+         */
+
+        HAPCRYPTO_SRP_INIT_FINISH_GEN_SALT,
+        HAPCRYPTO_SRP_INIT_COMPLETE,
     };
+
+    template <typename T = void *>
+    T* arg(){ return static_cast<T*>(argument); }
+
 private:
     friend class HAPServer;
 
@@ -88,10 +125,14 @@ public:
 
 private:
     HAPEventListener * _onSelf(HAPEvent::EventID, HAPEventListener::HAPCallback);
-    void _onRequestReceived(HAPEvent * conn);
     void _clearEventQueue();
     void _clearEventListeners();
     HAPEvent * _dequeueEvent();
+
+    void _onRequestReceived(HAPEvent *);
+    void _onConnect(HAPEvent *);
+    void _onDisconnect(HAPEvent *);
+    void _onSetupInitComplete(HAPEvent *);
 
     void _updateSDRecords(HAPEvent *);
 
@@ -100,14 +141,38 @@ private:
     HAPEventListener * eventListeners = nullptr;
     HAPPairingsManager * pairingsManager = nullptr;
 
+private:
+    friend class HAPPairingsManager;
+    friend void hap_crypto_srp_init(hap_crypto_setup * info);
     void * mdns_handle = nullptr;
     const char * deviceName = "HomeKit Device";
     const char * deviceId = "F6:A4:35:E3:0A:E2";
     const char * modelName = "HomeKitDevice1,1";
+    const char * setupCode = "816-32-958";
+};
+
+struct hap_pair_info{
+private:
+    friend class HAPServer;
+    friend class HAPPairingsManager;
+
+    bool isPaired = false;
+    bool isVerifying = false;
+    bool isPairing = false;
+    uint8_t currentStep = 0;
+
+    hap_crypto_setup * setupStore = nullptr;
 };
 
 class HAPPairingsManager {
+private:
+    friend class HAPServer;
+    explicit HAPPairingsManager(HAPServer *);
 
+    void onPairSetup(HAPUserHelper *);
+    void onPairSetupM1Finish(hap_crypto_setup *);
+
+    HAPServer * server;
 };
 
 extern HAPServer HKAccessory;

@@ -35,6 +35,15 @@ enum tlv8_type: uint8_t {
     kTLVType_Separator          = 0xff
 };
 
+enum tlv8_method: uint8_t {
+    METHOD_RESERVED                 = 0,
+    METHOD_PAIR_SETUP               = 1,
+    METHOD_PAIR_VERIFY              = 2,
+    METHOD_ADD_PAIRING              = 3,
+    METHOD_REMOVE_PAIRING           = 4,
+    METHOD_LIST_PAIRINGS            = 5
+};
+
 typedef uint8_t tlv8_length;
 
 struct tlv8_item {
@@ -66,7 +75,7 @@ tlv8_item * tlv8_parse(uint8_t * data, unsigned int length);
  * @param type
  * @return
  */
-tlv8_item * tlv8_find(tlv8_item * chain, tlv8_type type) __attribute((pure));
+const tlv8_item * tlv8_find(const tlv8_item * chain, tlv8_type type) __attribute((pure));
 
 /**
  * Find the item with the specific type after the given item.
@@ -75,7 +84,7 @@ tlv8_item * tlv8_find(tlv8_item * chain, tlv8_type type) __attribute((pure));
  * @param type
  * @return
  */
-tlv8_item * tlv8_find_next(tlv8_item * chain, tlv8_type type) __attribute((pure));
+const tlv8_item * tlv8_find_next(const tlv8_item * chain, tlv8_type type) __attribute((pure));
 
 /**
  * Read 'length' bytes of data from 'item' to 'buffer'. This will shift the
@@ -96,7 +105,7 @@ unsigned int tlv8_read(tlv8_item * item, uint8_t * buffer, unsigned int length);
  * @param item The tlv8 item
  * @return Length of the item
  */
-unsigned int tlv8_value_length(tlv8_item * item) __attribute((pure));
+unsigned int tlv8_value_length(const tlv8_item * item) __attribute((pure));
 
 /**
  * Presume the number of bytes of tlv8_item after encodings given the length of
@@ -115,7 +124,7 @@ unsigned int tlv8_item_length(unsigned int value_length) __attribute((pure));
  * @param chain Any item in the chain
  * @return Number of bytes required to contain this chain.
  */
-unsigned int tlv8_chain_length(tlv8_item * chain) __attribute((pure));
+unsigned int tlv8_chain_length(const tlv8_item * chain) __attribute((pure));
 
 /**
  * Free up the memory allocated to the parsed tlv8_item * chain, starts with the
@@ -153,7 +162,7 @@ void tlv8_reset_chain(tlv8_item * chain);
  * @param data Pointer to the actual data
  * @return The newly created tlv8_item
  */
-tlv8_item * tlv8_insert(tlv8_item * chain, tlv8_type type, unsigned int length, uint8_t * data);
+tlv8_item * tlv8_insert(tlv8_item * chain, tlv8_type type, unsigned int length, const void * data);
 
 /**
  * Encode the tlv8 chain to the destination buffer. Its your responsibility to make
@@ -163,6 +172,16 @@ tlv8_item * tlv8_insert(tlv8_item * chain, tlv8_type type, unsigned int length, 
  * @param destination
  * @param length
  */
-void tlv8_encode(tlv8_item * chain, uint8_t * destination);
+void tlv8_encode(const tlv8_item * chain, uint8_t * destination);
+
+/**
+ * Alloc the destination buffer and encode the entire tlv8 chain into the buffer,
+ * then free the entire tlv8 chain.
+ *
+ * @param chain
+ * @return pointer to the allocated buffer with encoded data
+ * @warning remember to delete[] the buffer
+ */
+uint8_t * tlv8_export_free(tlv8_item * chain, unsigned int * exportedLength);
 
 #endif //ARDUINOHOMEKIT_TLV_H

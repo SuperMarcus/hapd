@@ -1,4 +1,5 @@
 #include "HomeKitAccessory.h"
+#include "network.h"
 #include <cstring>
 
 HAPServer HKAccessory;
@@ -7,8 +8,17 @@ void HAPServer::begin(uint16_t port) {
     _clearEventListeners();
     _clearEventQueue();
 
+    delete pairingsManager;
+    pairingsManager = new HAPPairingsManager(this);
+
+    //Register all events handled internally by HAPServer
     _onSelf(HAPEvent::HAP_SD_NEEDED_UPDATE, &HAPServer::_updateSDRecords);
     _onSelf(HAPEvent::HAP_NET_RECEIVE_REQUEST, &HAPServer::_onRequestReceived);
+    _onSelf(HAPEvent::HAP_NET_CONNECT, &HAPServer::_onConnect);
+    _onSelf(HAPEvent::HAP_NET_DISCONNECT, &HAPServer::_onDisconnect);
+
+    //For HAPPairingsManager
+    _onSelf(HAPEvent::HAPCRYPTO_SRP_INIT_COMPLETE, &HAPServer::_onSetupInitComplete);
 
     server_conn = new hap_network_connection;
     server_conn->raw = nullptr;
@@ -40,10 +50,41 @@ void HAPServer::handle() {
     }
 }
 
-void HAPServer::_onRequestReceived(HAPEvent * e) {
-    auto req = new HAPUserHelper(static_cast<hap_network_connection*>(e->argument));
+//TODO: tmp added for hexdump
+#include <ctype.h>
+void hexdump(const void *ptr, int buflen) {
+    auto *buf = (unsigned const char*)ptr;
+    int i, j;
+    for (i=0; i<buflen; i+=16) {
+        printf("%06x: ", i);
+        for (j=0; j<16; j++)
+            if (i+j < buflen)
+                printf("%02x ", buf[i+j]);
+            else
+                printf("   ");
+        printf(" ");
+        for (j=0; j<16; j++)
+            if (i+j < buflen)
+                printf("%c", isprint(buf[i+j]) ? buf[i+j] : '.');
+        printf("\n");
+    }
+}
 
-    delete req;
+void HAPServer::_onRequestReceived(HAPEvent * e) {
+    auto req = new HAPUserHelper(e->arg<hap_network_connection>());
+    req->retain();
+
+    HAP_DEBUG("New Request to %d with method %d, length %u bytes", req->path(), req->method(), req->dataLength());
+    hexdump(req->data(), req->dataLength());
+
+    switch (req->path()){
+        case PAIR_SETUP:
+            pairingsManager->onPairSetup(req);
+            break;
+        default: HAP_DEBUG("Unimplemented path: %d", req->path());
+    }
+
+    req->release();
 }
 
 void HAPServer::_clearEventQueue() {
@@ -117,4 +158,19 @@ void HAPServer::_updateSDRecords(HAPEvent *) {
 HAPServer::~HAPServer() {
     hap_service_discovery_deinit(mdns_handle);
     mdns_handle = nullptr;
+}
+
+void HAPServer::_onConnect(HAPEvent * event) {
+    auto c = event->arg<hap_network_connection>();
+    c->user->pair_info = new hap_pair_info();
+}
+
+void HAPServer::_onDisconnect(HAPEvent * event) {
+    auto user = event->arg<hap_user_connection>();
+    delete user->pair_info;
+    user->pair_info = nullptr;
+}
+
+void HAPServer::_onSetupInitComplete(HAPEvent * event) {
+    pairingsManager->onPairSetupM1Finish(event->arg<hap_crypto_setup>());
 }

@@ -32,8 +32,6 @@
  *
  */
 
-#include <time.h>
-
 #include <stdlib.h>
 #include <string.h>
 
@@ -42,7 +40,6 @@
 #include "ctr_drbg.h"
 #include "sha512.h"
 
-
 #include "srp.h"
 
 static int g_initialized = 0;
@@ -50,28 +47,12 @@ static mbedtls_entropy_context entropy_ctx;
 static mbedtls_ctr_drbg_context ctr_drbg_ctx;
 static mbedtls_mpi *RR;
 
-typedef struct {
-    BIGNUM *N;
-    BIGNUM *g;
-} NGConstant;
-
-struct NGHex {
-    const char *n_hex;
-    const char *g_hex;
-};
-
 /* All constants here were pulled from Appendix A of RFC 5054 */
 static struct NGHex global_Ng_constants[] = {
-        { /* 512 */
-                "D66AAFE8E245F9AC245A199F62CE61AB8FA90A4D80C71CD2ADFD0B9DA163B29F2A34AFBDB3B"
-                "1B5D0102559CE63D8B6E86B0AA59C14E79D4AA62D1748E4249DF3",
-                "2"
-        },
         {       0, 0} /* null sentinel */
 };
 
-
-static NGConstant *new_ng(SRP_NGType ng_type, const char *n_hex, const char *g_hex) {
+NGConstant *new_ng(SRP_NGType ng_type, const char *n_hex, const char *g_hex) {
     NGConstant *ng = (NGConstant *) malloc(sizeof(NGConstant));
     ng->N = (mbedtls_mpi *) malloc(sizeof(mbedtls_mpi));
     ng->g = (mbedtls_mpi *) malloc(sizeof(mbedtls_mpi));
@@ -81,18 +62,13 @@ static NGConstant *new_ng(SRP_NGType ng_type, const char *n_hex, const char *g_h
     if (!ng || !ng->N || !ng->g)
         return 0;
 
-    if (ng_type != SRP_NG_CUSTOM) {
-        n_hex = global_Ng_constants[ng_type].n_hex;
-        g_hex = global_Ng_constants[ng_type].g_hex;
-    }
-
     mbedtls_mpi_read_string(ng->N, 16, n_hex);
     mbedtls_mpi_read_string(ng->g, 16, g_hex);
 
     return ng;
 }
 
-static void delete_ng(NGConstant *ng) {
+void delete_ng(NGConstant *ng) {
     if (ng) {
         mbedtls_mpi_free(ng->N);
         mbedtls_mpi_free(ng->g);
@@ -258,7 +234,7 @@ static int hash_length(SRP_HashAlgorithm alg) {
 }
 
 
-static BIGNUM *H_nn(SRP_HashAlgorithm alg, const BIGNUM *n1, const BIGNUM *n2) {
+BIGNUM *H_nn(SRP_HashAlgorithm alg, const BIGNUM *n1, const BIGNUM *n2) {
     unsigned char buff[SHA512_DIGEST_LENGTH];
     int len_n1 = mbedtls_mpi_size(n1);
     int len_n2 = mbedtls_mpi_size(n2);
@@ -278,7 +254,7 @@ static BIGNUM *H_nn(SRP_HashAlgorithm alg, const BIGNUM *n1, const BIGNUM *n2) {
     return bn;
 }
 
-static BIGNUM *H_ns(SRP_HashAlgorithm alg, const BIGNUM *n, const unsigned char *bytes, int len_bytes) {
+BIGNUM *H_ns(SRP_HashAlgorithm alg, const BIGNUM *n, const unsigned char *bytes, int len_bytes) {
     unsigned char buff[SHA512_DIGEST_LENGTH];
     int len_n = mbedtls_mpi_size(n);
     int nbytes = len_n + len_bytes;
@@ -378,8 +354,16 @@ static void calculate_H_AMK(SRP_HashAlgorithm alg, unsigned char *dest, const BI
     hash_final(alg, &ctx, dest);
 }
 
+mbedtls_ctr_drbg_context * csrp_ctr_drbg_ctx(){
+    return &ctr_drbg_ctx;
+}
 
-static void init_random() {
+mbedtls_mpi * csrp_speed_RR(){
+    return RR;
+}
+
+#define init_random csrp_init_random
+void csrp_init_random() {
     if (g_initialized)
         return;
 
@@ -433,11 +417,11 @@ void srp_random_seed(const unsigned char *random_data, int data_length) {
 
 
 void srp_create_salted_verification_key(SRP_HashAlgorithm alg,
-                                        SRP_NGType ng_type, const char *username,
+                                        const char *username,
                                         const unsigned char *password, int len_password,
                                         const unsigned char **bytes_s, int *len_s,
                                         const unsigned char **bytes_v, int *len_v,
-                                        const char *n_hex, const char *g_hex) {
+                                        NGConstant * ng) {
 
 
     BIGNUM *s;
@@ -449,17 +433,14 @@ void srp_create_salted_verification_key(SRP_HashAlgorithm alg,
     v = (mbedtls_mpi *) malloc(sizeof(mbedtls_mpi));
     mbedtls_mpi_init(v);
 
-    NGConstant *ng = new_ng(ng_type, n_hex, g_hex);
-
     if (!s || !v || !ng)
         goto cleanup_and_exit;
 
     init_random(); /* Only happens once */
 
-    mbedtls_mpi_fill_random(s, 32,
+    mbedtls_mpi_fill_random(s, 16,
                             &mbedtls_ctr_drbg_random,
                             &ctr_drbg_ctx);
-
 
     x = calculate_x(alg, s, username, password, len_password);
 
@@ -481,7 +462,6 @@ void srp_create_salted_verification_key(SRP_HashAlgorithm alg,
     mbedtls_mpi_write_binary(v, *bytes_v, *len_v);
 
     cleanup_and_exit:
-    delete_ng(ng);
     mbedtls_mpi_free(s);
     free(s);
     mbedtls_mpi_free(v);
@@ -918,3 +898,5 @@ void srp_user_verify_session(struct SRPUser *usr, const unsigned char *bytes_HAM
     if (memcmp(usr->H_AMK, bytes_HAMK, hash_length(usr->hash_alg)) == 0)
         usr->authenticated = 1;
 }
+
+#undef init_random

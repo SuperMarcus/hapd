@@ -18,9 +18,9 @@ static const char _path_identify[] PROGMEM = "/identify";
 static const char _path_pair_setup[] PROGMEM = "/pair-setup";
 static const char _path_pair_verify[] PROGMEM = "/pair-verify";
 static const char _path_pairings[] PROGMEM = "/pairings";
-static const char _header_content_type[] PROGMEM = "content-type";
-static const char _header_content_length[] PROGMEM = "content-length";
-static const char _header_host[] PROGMEM = "host";
+static const char _header_content_type[] PROGMEM = "Content-Type";
+static const char _header_content_length[] PROGMEM = "Content-Length";
+static const char _header_host[] PROGMEM = "Host";
 static const char _ctype_tlv8[] PROGMEM = "application/pairing+tlv8";
 static const char _ctype_json[] PROGMEM = "application/hap+json";
 static const char _message_http11[] PROGMEM = "HTTP/1.1";
@@ -38,6 +38,10 @@ static const char _status_400[] PROGMEM = "400 Bad Request"; //HAP client error,
 static const char _status_404[] PROGMEM = "404 Not Found"; //An invalid URL
 static const char _status_422[] PROGMEM = "422 Unprocessable Entity"; //For a well-formed request that contains invalid parameters
 
+//A few 4xx additional from Table 4-2
+static const char _status_429[] PROGMEM = "429 Too Many Requests";
+static const char _status_470[] PROGMEM = "470 Connection Authorization Required";
+
 //5.7.1.3 Server Error Status HTTP Codes
 static const char _status_500[] PROGMEM = "500 Internal Server Error";
 static const char _status_503[] PROGMEM = "503 Service Unavailable";
@@ -47,10 +51,14 @@ static const char _status_503[] PROGMEM = "503 Service Unavailable";
  */
 void hap_event_network_accept(hap_network_connection *server, hap_network_connection *client) {
     auto user = new hap_user_connection();
+    auto hap = server->server;
     user->request_buffer = nullptr;
     user->request_header = nullptr;
+    user->response_header = nullptr;
+    user->response_buffer = nullptr;
     client->user = user;
-    client->server = server->server;
+    client->server = hap;
+    hap->emit(HAPEvent::HAP_NET_CONNECT, client);
 }
 
 /**
@@ -85,7 +93,6 @@ void hap_event_network_receive(hap_network_connection *client, const uint8_t *or
 
         //Initialize response buffers
         delete user->response_header;
-        delete user->response_buffer;
         user->response_header = new hap_http_description();
         user->response_buffer = nullptr;
 
@@ -207,7 +214,7 @@ void hap_event_network_receive(hap_network_connection *client, const uint8_t *or
     }
 
     //If we have more data, append to the buffer
-    auto available = data - originalData;
+    auto available = length - (data - originalData);
     auto needed = user->request_header->content_length - user->request_current_length;
     if (available > 0) {
         auto copyLength = available > needed ? needed : available;
@@ -221,14 +228,33 @@ void hap_event_network_receive(hap_network_connection *client, const uint8_t *or
     }
 }
 
+static void hap_user_flush(hap_user_connection * user){
+    auto header = user->request_header;
+    if (header) {
+        if (header->host) {
+            delete[] header->host;
+            header->host = nullptr;
+        }
+        user->request_header = nullptr;
+        delete header;
+    }
+    auto buf = user->request_buffer;
+    if (buf) {
+        user->request_buffer = nullptr;
+        user->request_current_length = 0;
+        delete[] buf;
+    }
+}
+
 /**
  * Called when connection is closed.
  */
 void hap_event_network_close(hap_network_connection *client) {
-    client->server->emit(HAPEvent::HAP_NET_DISCONNECT, client);
-    hap_network_flush(client);
-    delete client->user;
-    client->user = nullptr;
+    auto user = client->user;
+    client->server->emit(HAPEvent::HAP_NET_DISCONNECT, user, [](HAPEvent * e){
+        auto u = e->arg<hap_user_connection>();
+        hap_user_flush(u);
+    });
 }
 
 /**
@@ -236,30 +262,13 @@ void hap_event_network_close(hap_network_connection *client) {
  */
 void hap_network_flush(hap_network_connection *client) {
     auto user = client->user;
-    if (user) {
-        auto header = user->request_header;
-        if (header) {
-            if (header->host) {
-                delete[] header->host;
-                header->host = nullptr;
-            }
-            user->request_header = nullptr;
-            delete header;
-        }
-        auto buf = user->request_buffer;
-        if (buf) {
-            user->request_buffer = nullptr;
-            user->request_current_length = 0;
-            delete[] buf;
-        }
-    }
+    if (user) { hap_user_flush(user); }
 }
 
 void hap_network_response(hap_network_connection *client) {
     auto user = client->user;
     auto header = user->response_header;
     const char *status_ptr, *msg_type_ptr, *ctype_ptr;
-    size_t header_length = 0;
 
 #define _CASE_STATUS(stat) \
     case stat: \
@@ -275,13 +284,14 @@ void hap_network_response(hap_network_connection *client) {
         _CASE_STATUS(400)
         _CASE_STATUS(404)
         _CASE_STATUS(422)
+        _CASE_STATUS(429)
+        _CASE_STATUS(470)
         _CASE_STATUS(500)
         _CASE_STATUS(503)
         default:
             status_ptr = _status_200;
             HAP_DEBUG("Unknown status in response: %u", header->status);
     }
-    header_length += strlen_P(status_ptr) + 1;
 
     //message type
     switch (header->message_type){
@@ -292,7 +302,6 @@ void hap_network_response(hap_network_connection *client) {
         default:
             msg_type_ptr = _message_http11;
     }
-    header_length += strlen_P(msg_type_ptr) + 2;//with \r\n
 
     //other headers
 
@@ -307,12 +316,10 @@ void hap_network_response(hap_network_connection *client) {
             HAP_DEBUG("Unknown content type: %d. Not sending this response.", header->content_type);
             return;
     }
-    header_length += strlen_P(_header_content_type) + strlen_P(ctype_ptr) + 4;//4 bytes = ": " and "\r\n"
-    header_length += strlen_P(_header_content_length) + floor(log10(header->content_length)) + 5;//5 bytes = same above + 1 for number
-    header_length += 2;//for "\r\n" at the end
 
-    auto header_buf = new char[header_length + 1]();
-    snprintf_P(header_buf, header_length + 1,
+    auto frame_buf = new char[1024]();
+    auto frame_ptr = frame_buf;
+    frame_ptr += snprintf_P(frame_ptr, 1024,
 #ifdef NATIVE_STRINGS
                "%s %s\r\n%s: %s\r\n%s: %u\r\n\r\n",
 #else
@@ -323,11 +330,24 @@ void hap_network_response(hap_network_connection *client) {
                _header_content_length, header->content_length
     );
 
-    //send header
-    hap_network_send(client, reinterpret_cast<const uint8_t *>(header_buf), static_cast<unsigned int>(header_length));
-    delete[] header_buf;
+    auto bodyPtr = user->response_buffer;
+    while ((bodyPtr - user->response_buffer) < header->content_length){
+        auto spaceLen = 1024 - (frame_ptr - frame_buf);
+        auto leftLen = header->content_length - (bodyPtr - user->response_buffer);
+        auto copyLen = spaceLen > leftLen ? leftLen : spaceLen;
+        memcpy(frame_ptr, bodyPtr, copyLen);
+        bodyPtr += copyLen;
+        frame_ptr += copyLen;
+        hap_network_send(client, reinterpret_cast<const uint8_t *>(frame_buf),
+                         static_cast<unsigned int>(frame_ptr - frame_buf));
+        memset(frame_buf, 0, 1024);
+        frame_ptr = frame_buf;
+    }
 
-    //send user data if there is one
-    if(header->content_length > 0 && user->response_buffer != nullptr)
-    { hap_network_send(client, user->response_buffer, header->content_length); }
+    if(frame_ptr != frame_buf){
+        hap_network_send(client, reinterpret_cast<const uint8_t *>(frame_buf),
+                         static_cast<unsigned int>(frame_ptr - frame_buf));
+    }
+
+    delete[] frame_buf;
 }

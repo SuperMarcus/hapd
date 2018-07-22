@@ -94,6 +94,28 @@ typedef enum
     SRP_SHA512
 } SRP_HashAlgorithm;
 
+/**
+ * Manually exported functions for HAP
+ */
+
+typedef struct {
+	BIGNUM *N;
+	BIGNUM *g;
+} NGConstant;
+
+typedef struct NGHex {
+	const char *n_hex;
+	const char *g_hex;
+} NGHex;
+
+NGConstant * new_ng(SRP_NGType ng_type, const char *n_hex, const char *g_hex);
+void delete_ng(NGConstant *ng);
+BIGNUM *H_nn(SRP_HashAlgorithm alg, const BIGNUM *n1, const BIGNUM *n2);
+BIGNUM *H_ns(SRP_HashAlgorithm alg, const BIGNUM *n, const unsigned char *bytes, int len_bytes);
+void csrp_init_random();
+mbedtls_ctr_drbg_context * csrp_ctr_drbg_ctx();
+mbedtls_mpi * csrp_speed_RR();
+
 /* This library will automatically seed the mbedtls random number generator.
  *
  * The random data should include at least as many bits of entropy as the
@@ -119,11 +141,11 @@ void srp_random_seed( const unsigned char * random_data, int data_length );
  * If provided, they must contain ASCII text of the hexidecimal notation.
  */
 void srp_create_salted_verification_key( SRP_HashAlgorithm alg, 
-                                         SRP_NGType ng_type, const char * username,
+                                         const char * username,
                                          const unsigned char * password, int len_password,
                                          const unsigned char ** bytes_s, int * len_s, 
                                          const unsigned char ** bytes_v, int * len_v,
-                                         const char * n_hex, const char * g_hex );
+                                         NGConstant * ng);
 
 
 /* Out: bytes_B, len_B.
