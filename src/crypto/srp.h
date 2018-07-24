@@ -72,11 +72,6 @@ extern "C" {
 #define SHA512_DIGEST_LENGTH 64
 #define BIGNUM	mbedtls_mpi
 
-typedef enum
-{
-    SRP_NG_CUSTOM
-} SRP_NGType;
-
 typedef enum 
 {
     SRP_SHA512
@@ -91,11 +86,6 @@ typedef struct {
 	BIGNUM *g;
 } NGConstant;
 
-typedef struct NGHex {
-	const char *n_hex;
-	const char *g_hex;
-} NGHex;
-
 struct SRPVerifier {
 	SRP_HashAlgorithm hash_alg;
 	NGConstant *ng;
@@ -109,138 +99,10 @@ struct SRPVerifier {
 	unsigned char session_key[SHA512_DIGEST_LENGTH];
 };
 
-
-struct SRPUser {
-	SRP_HashAlgorithm hash_alg;
-	NGConstant *ng;
-
-	BIGNUM *a;
-	BIGNUM *A;
-	BIGNUM *S;
-
-	const unsigned char *bytes_A;
-	int authenticated;
-
-	const char *username;
-	const unsigned char *password;
-	int password_len;
-
-	unsigned char M[SHA512_DIGEST_LENGTH];
-	unsigned char H_AMK[SHA512_DIGEST_LENGTH];
-	unsigned char session_key[SHA512_DIGEST_LENGTH];
-};
-
-void calculate_M(SRP_HashAlgorithm alg, NGConstant *ng, unsigned char *dest, const char *I, const BIGNUM *s,
-				 const BIGNUM *A, const BIGNUM *B, const unsigned char *K);
-void calculate_H_AMK(SRP_HashAlgorithm alg, unsigned char *dest, const BIGNUM *A, const unsigned char *M,
-					 const unsigned char *K);
-void hash_num(SRP_HashAlgorithm alg, const BIGNUM *n, unsigned char *dest);
-NGConstant * new_ng(SRP_NGType ng_type, const char *n_hex, const char *g_hex);
 void delete_ng(NGConstant *ng);
-BIGNUM *H_nn(SRP_HashAlgorithm alg, const BIGNUM *n1, const BIGNUM *n2);
-BIGNUM *H_ns(SRP_HashAlgorithm alg, const BIGNUM *n, const unsigned char *bytes, int len_bytes);
 void csrp_init_random();
 mbedtls_ctr_drbg_context * csrp_ctr_drbg_ctx();
 mbedtls_mpi * csrp_speed_RR();
-
-/* This library will automatically seed the mbedtls random number generator.
- *
- * The random data should include at least as many bits of entropy as the
- * largest hash function used by the application. So, for example, if a
- * 512-bit hash function is used, the random data requies at least 512
- * bits of entropy.
- * 
- * Passing a null pointer to this function will cause this library to skip
- * seeding the random number generator.
- * 
- * Notes: 
- *    * This function is optional on Windows & Linux and mandatory on all
- *      other platforms.
- */
-void srp_random_seed( const unsigned char * random_data, int data_length );
-
-
-/* Out: bytes_s, len_s, bytes_v, len_v
- * 
- * The caller is responsible for freeing the memory allocated for bytes_s and bytes_v
- * 
- * The n_hex and g_hex parameters should be 0 unless SRP_NG_CUSTOM is used for ng_type.
- * If provided, they must contain ASCII text of the hexidecimal notation.
- */
-void srp_create_salted_verification_key( SRP_HashAlgorithm alg, 
-                                         const char * username,
-                                         const unsigned char * password, int len_password,
-                                         const unsigned char ** bytes_s, int * len_s, 
-                                         const unsigned char ** bytes_v, int * len_v,
-                                         NGConstant * ng);
-
-
-/* Out: bytes_B, len_B.
- * 
- * On failure, bytes_B will be set to NULL and len_B will be set to 0
- * 
- * The n_hex and g_hex parameters should be 0 unless SRP_NG_CUSTOM is used for ng_type
- */
-struct SRPVerifier *  srp_verifier_new( const char * username,
-                                        const unsigned char * bytes_s, int len_s, 
-                                        const unsigned char * bytes_v, int len_v,
-                                        const unsigned char * bytes_A, int len_A,
-                                        const unsigned char * bytes_B, int len_B,
-										NGConstant * ng );
-
-
-void                  srp_verifier_delete( struct SRPVerifier * ver );
-
-
-int                   srp_verifier_is_authenticated( struct SRPVerifier * ver );
-
-
-const char *          srp_verifier_get_username( struct SRPVerifier * ver );
-
-/* key_length may be null */
-const unsigned char * srp_verifier_get_session_key( struct SRPVerifier * ver, int * key_length );
-
-
-int                   srp_verifier_get_session_key_length( struct SRPVerifier * ver );
-
-
-/* user_M must be exactly srp_verifier_get_session_key_length() bytes in size */
-void                  srp_verifier_verify_session( struct SRPVerifier * ver,
-                                                   const unsigned char * user_M, 
-                                                   const unsigned char ** bytes_HAMK );
-
-/*******************************************************************************/
-
-/* The n_hex and g_hex parameters should be 0 unless SRP_NG_CUSTOM is used for ng_type */
-struct SRPUser *      srp_user_new( SRP_HashAlgorithm alg, SRP_NGType ng_type, const char * username,
-                                    const unsigned char * bytes_password, int len_password,
-                                    const char * n_hex, const char * g_hex );
-                                    
-void                  srp_user_delete( struct SRPUser * usr );
-
-int                   srp_user_is_authenticated( struct SRPUser * usr);
-
-
-const char *          srp_user_get_username( struct SRPUser * usr );
-
-/* key_length may be null */
-const unsigned char * srp_user_get_session_key( struct SRPUser * usr, int * key_length );
-
-int                   srp_user_get_session_key_length( struct SRPUser * usr );
-
-/* Output: username, bytes_A, len_A */
-void                  srp_user_start_authentication( struct SRPUser * usr, const char ** username, 
-                                                     const unsigned char ** bytes_A, int * len_A );
-
-/* Output: bytes_M, len_M  (len_M may be null and will always be 
- *                          srp_user_get_session_key_length() bytes in size) */
-void                  srp_user_process_challenge( struct SRPUser * usr, 
-                                                  const unsigned char * bytes_s, int len_s, 
-                                                  const unsigned char * bytes_B, int len_B,
-                                                  const unsigned char ** bytes_M, int * len_M );
-                                                  
-/* bytes_HAMK must be exactly srp_user_get_session_key_length() bytes in size */
-void                  srp_user_verify_session( struct SRPUser * usr, const unsigned char * bytes_HAMK );
 
 #endif /* Include Guard */
 #ifdef __cplusplus
