@@ -2,7 +2,6 @@
 #include "network.h"
 #include "tlv.h"
 #include "hap_crypto.h"
-#include "hap_crypto.h"
 
 #include <cstring>
 
@@ -26,6 +25,7 @@ void HAPPairingsManager::onPairSetup(HAPUserHelper * request) {
     }
 
     auto pairInfo = request->pairInfo();
+    auto& setupStore = pairInfo->setupStore;
     auto chain = tlv8_parse(request->data(), request->dataLength());
     HAP_DEBUG("pairing request: state(%d)",
               *tlv8_find(chain, kTLVType_State)->value);
@@ -49,16 +49,36 @@ void HAPPairingsManager::onPairSetup(HAPUserHelper * request) {
         pairInfo->currentStep = 0;
 
         delete pairInfo->setupStore;
-        pairInfo->setupStore = new hap_crypto_setup(server);
+        pairInfo->setupStore = new hap_crypto_setup(server, "Pair-Setup", server->setupCode);
     }
 
+    setupStore->session = request;
     switch (requestPairStep){
         case 1: //M1
-            request->retain();
-            pairInfo->setupStore->session = request;
-            hap_crypto_srp_init(pairInfo->setupStore);
+            request->retain(); //complimentary release in HAPPairingsManager::onPairSetupM2Finish
+            hap_crypto_srp_init(setupStore);
             pairInfo->currentStep = 2;
             break;
+        case 3: { //M3
+            auto ATlv = tlv8_find(chain, kTLVType_PublicKey);
+            auto ALen = tlv8_value_length(ATlv);
+            auto A = new uint8_t[ALen];
+            tlv8_read(ATlv, A, ALen);
+            setupStore->A = A;
+            setupStore->ALen = static_cast<uint16_t>(ALen);
+
+            auto MTlv = tlv8_find(chain, kTLVType_Proof);
+            auto MLen = tlv8_value_length(MTlv);
+            auto M = new uint8_t[MLen];
+            tlv8_read(MTlv, M, MLen);
+            setupStore->clientProof = M;
+            //We don't store the length since we know its 512bits
+
+            request->retain(); //release in HAPPairingsManager::onPairSetupM4Finish
+            hap_crypto_srp_proof(setupStore);
+            pairInfo->currentStep = 4;
+            break;
+        }
         default:
             HAP_DEBUG("Unknown pairing step %u", requestPairStep);
     }
@@ -67,7 +87,7 @@ void HAPPairingsManager::onPairSetup(HAPUserHelper * request) {
 //    request->close();
 }
 
-void HAPPairingsManager::onPairSetupM1Finish(hap_crypto_setup * info) {
+void HAPPairingsManager::onPairSetupM2Finish(hap_crypto_setup * info) {
     auto request = info->session;
     info->session = nullptr;
 
@@ -79,4 +99,27 @@ void HAPPairingsManager::onPairSetupM1Finish(hap_crypto_setup * info) {
 
     request->send(response);
     request->release();
+}
+
+void HAPPairingsManager::onPairSetupM4Finish(hap_crypto_setup * info) {
+    auto request = info->session;
+    info->session = nullptr;
+
+    tlv8_item * response = nullptr;
+
+    if(hap_crypto_verify_client_proof(info)){
+        response = tlv8_insert(response, kTLVType_Proof, 64, info->serverProof);
+    } else {
+        uint8_t error = kTLVError_Authentication;
+        response = tlv8_insert(response, kTLVType_Error, 1, &error);
+    }
+
+    uint8_t M4 = 4;
+    response = tlv8_insert(response, kTLVType_State, 1, &M4);
+    request->send(response);
+    request->release();
+}
+
+hap_pair_info::~hap_pair_info() {
+    delete setupStore;
 }

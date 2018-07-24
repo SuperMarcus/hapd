@@ -83,42 +83,6 @@ typedef union {
     mbedtls_sha512_context sha512;
 } HashCTX;
 
-
-struct SRPVerifier {
-    SRP_HashAlgorithm hash_alg;
-    NGConstant *ng;
-
-    const char *username;
-    const unsigned char *bytes_B;
-    int authenticated;
-
-    unsigned char M[SHA512_DIGEST_LENGTH];
-    unsigned char H_AMK[SHA512_DIGEST_LENGTH];
-    unsigned char session_key[SHA512_DIGEST_LENGTH];
-};
-
-
-struct SRPUser {
-    SRP_HashAlgorithm hash_alg;
-    NGConstant *ng;
-
-    BIGNUM *a;
-    BIGNUM *A;
-    BIGNUM *S;
-
-    const unsigned char *bytes_A;
-    int authenticated;
-
-    const char *username;
-    const unsigned char *password;
-    int password_len;
-
-    unsigned char M[SHA512_DIGEST_LENGTH];
-    unsigned char H_AMK[SHA512_DIGEST_LENGTH];
-    unsigned char session_key[SHA512_DIGEST_LENGTH];
-};
-
-
 static void hash_init(SRP_HashAlgorithm alg, HashCTX *c) {
     switch (alg) {
 //        case SRP_SHA1  :
@@ -143,7 +107,7 @@ static void hash_start(SRP_HashAlgorithm alg, HashCTX *c) {
 //        case SRP_SHA384:
 //            mbedtls_sha512_starts(&c->sha512, 1);
         case SRP_SHA512:
-            mbedtls_sha512_starts(&c->sha512, 0);
+            mbedtls_sha512_starts_ret(&c->sha512, 0);
         default:
             return;
     };
@@ -165,7 +129,7 @@ static void hash_update(SRP_HashAlgorithm alg, HashCTX *c, const void *data, siz
 //            mbedtls_sha512_update(&c->sha512, data, len);
 //            break;
         case SRP_SHA512:
-            mbedtls_sha512_update(&c->sha512, data, len);
+            mbedtls_sha512_update_ret(&c->sha512, data, len);
             break;
         default:
             return;
@@ -187,7 +151,7 @@ static void hash_final(SRP_HashAlgorithm alg, HashCTX *c, unsigned char *md) {
 //            mbedtls_sha512_finish(&c->sha512, md);
 //            break;
         case SRP_SHA512:
-            mbedtls_sha512_finish(&c->sha512, md);
+            mbedtls_sha512_finish_ret(&c->sha512, md);
             break;
         default:
             return;
@@ -196,18 +160,6 @@ static void hash_final(SRP_HashAlgorithm alg, HashCTX *c, unsigned char *md) {
 
 static void hash(SRP_HashAlgorithm alg, const unsigned char *d, size_t n, unsigned char *md) {
     switch (alg) {
-//        case SRP_SHA1  :
-//            mbedtls_sha1(d, n, md);
-//            break;
-//        case SRP_SHA224:
-//            mbedtls_sha256(d, n, md, 1);
-//            break;
-//        case SRP_SHA256:
-//            mbedtls_sha256(d, n, md, 0);
-//            break;
-//        case SRP_SHA384:
-//            mbedtls_sha512(d, n, md, 1);
-//            break;
         case SRP_SHA512:
             mbedtls_sha512(d, n, md, 0);
             break;
@@ -218,14 +170,6 @@ static void hash(SRP_HashAlgorithm alg, const unsigned char *d, size_t n, unsign
 
 static int hash_length(SRP_HashAlgorithm alg) {
     switch (alg) {
-//        case SRP_SHA1  :
-//            return SHA1_DIGEST_LENGTH;
-//        case SRP_SHA224:
-//            return SHA224_DIGEST_LENGTH;
-//        case SRP_SHA256:
-//            return SHA256_DIGEST_LENGTH;
-//        case SRP_SHA384:
-//            return SHA384_DIGEST_LENGTH;
         case SRP_SHA512:
             return SHA512_DIGEST_LENGTH;
         default:
@@ -300,7 +244,7 @@ static void update_hash_n(SRP_HashAlgorithm alg, HashCTX *ctx, const BIGNUM *n) 
     free(n_bytes);
 }
 
-static void hash_num(SRP_HashAlgorithm alg, const BIGNUM *n, unsigned char *dest) {
+void hash_num(SRP_HashAlgorithm alg, const BIGNUM *n, unsigned char *dest) {
     int nbytes = mbedtls_mpi_size(n);
     unsigned char *bin = (unsigned char *) malloc(nbytes);
     if (!bin)
@@ -310,7 +254,7 @@ static void hash_num(SRP_HashAlgorithm alg, const BIGNUM *n, unsigned char *dest
     free(bin);
 }
 
-static void calculate_M(SRP_HashAlgorithm alg, NGConstant *ng, unsigned char *dest, const char *I, const BIGNUM *s,
+void calculate_M(SRP_HashAlgorithm alg, NGConstant *ng, unsigned char *dest, const char *I, const BIGNUM *s,
                         const BIGNUM *A, const BIGNUM *B, const unsigned char *K) {
     unsigned char H_N[SHA512_DIGEST_LENGTH];
     unsigned char H_g[SHA512_DIGEST_LENGTH];
@@ -324,7 +268,6 @@ static void calculate_M(SRP_HashAlgorithm alg, NGConstant *ng, unsigned char *de
     hash_num(alg, ng->g, H_g);
 
     hash(alg, (const unsigned char *) I, strlen(I), H_I);
-
 
     for (i = 0; i < hash_len; i++)
         H_xor[i] = H_N[i] ^ H_g[i];
@@ -341,7 +284,7 @@ static void calculate_M(SRP_HashAlgorithm alg, NGConstant *ng, unsigned char *de
     hash_final(alg, &ctx, dest);
 }
 
-static void calculate_H_AMK(SRP_HashAlgorithm alg, unsigned char *dest, const BIGNUM *A, const unsigned char *M,
+void calculate_H_AMK(SRP_HashAlgorithm alg, unsigned char *dest, const BIGNUM *A, const unsigned char *M,
                             const unsigned char *K) {
     HashCTX ctx;
 
@@ -476,16 +419,19 @@ void srp_create_salted_verification_key(SRP_HashAlgorithm alg,
  *
  * On failure, bytes_B will be set to NULL and len_B will be set to 0
  */
-struct SRPVerifier *srp_verifier_new(SRP_HashAlgorithm alg, SRP_NGType ng_type, const char *username,
+struct SRPVerifier *srp_verifier_new(const char *username,
                                      const unsigned char *bytes_s, int len_s,
                                      const unsigned char *bytes_v, int len_v,
                                      const unsigned char *bytes_A, int len_A,
-                                     const unsigned char **bytes_B, int *len_B,
-                                     const char *n_hex, const char *g_hex) {
+                                     const unsigned char *bytes_B, int len_B,
+                                     NGConstant * ng) {
 
     BIGNUM *s;
     BIGNUM *v;
     BIGNUM *A;
+
+    //HAP uses sha512
+    SRP_HashAlgorithm alg = SRP_SHA512;
 
     s = (mbedtls_mpi *) malloc(sizeof(mbedtls_mpi));
     mbedtls_mpi_init(s);
@@ -507,7 +453,6 @@ struct SRPVerifier *srp_verifier_new(SRP_HashAlgorithm alg, SRP_NGType ng_type, 
     BIGNUM *b;
     b = (mbedtls_mpi *) malloc(sizeof(mbedtls_mpi));
     mbedtls_mpi_init(b);
-    BIGNUM *k = 0;
     BIGNUM *tmp1;
     tmp1 = (mbedtls_mpi *) malloc(sizeof(mbedtls_mpi));
     mbedtls_mpi_init(tmp1);
@@ -515,11 +460,7 @@ struct SRPVerifier *srp_verifier_new(SRP_HashAlgorithm alg, SRP_NGType ng_type, 
     tmp2 = (mbedtls_mpi *) malloc(sizeof(mbedtls_mpi));
     mbedtls_mpi_init(tmp2);
     int ulen = strlen(username) + 1;
-    NGConstant *ng = new_ng(ng_type, n_hex, g_hex);
     struct SRPVerifier *ver = 0;
-
-    *len_B = 0;
-    *bytes_B = 0;
 
     if (!s || !v || !A || !B || !S || !b || !tmp1 || !tmp2 || !ng) {
         goto cleanup_and_exit;
@@ -530,7 +471,6 @@ struct SRPVerifier *srp_verifier_new(SRP_HashAlgorithm alg, SRP_NGType ng_type, 
     if (!ver) {
         goto cleanup_and_exit;
     }
-    init_random(); /* Only happens once */
 
     ver->username = (char *) malloc(ulen);
     ver->hash_alg = alg;
@@ -549,16 +489,9 @@ struct SRPVerifier *srp_verifier_new(SRP_HashAlgorithm alg, SRP_NGType ng_type, 
     /* SRP-6a safety check */
     mbedtls_mpi_mod_mpi(tmp1, A, ng->N);
     if (mbedtls_mpi_cmp_int(tmp1, 0) != 0) {
-        mbedtls_mpi_fill_random(b, 256,
-                                &mbedtls_ctr_drbg_random,
-                                &ctr_drbg_ctx);
 
-        k = H_nn(alg, ng->N, ng->g);
-
-        /* B = kv + g^b */
-        mbedtls_mpi_mul_mpi(tmp1, k, v);
-        mbedtls_mpi_exp_mod(tmp2, ng->g, b, ng->N, RR);
-        mbedtls_mpi_add_mpi(B, tmp1, tmp2);
+        //Modified: read directly from generated B
+        mbedtls_mpi_read_binary(B, bytes_B, len_B);
 
         u = H_nn(alg, A, B);
 
@@ -572,19 +505,14 @@ struct SRPVerifier *srp_verifier_new(SRP_HashAlgorithm alg, SRP_NGType ng_type, 
         calculate_M(alg, ng, ver->M, username, s, A, B, ver->session_key);
         calculate_H_AMK(alg, ver->H_AMK, A, ver->M, ver->session_key);
 
-        *len_B = mbedtls_mpi_size(B);
-        *bytes_B = malloc(*len_B);
-
         if (!*bytes_B) {
             free((void *) ver->username);
             free(ver);
             ver = 0;
-            *len_B = 0;
             goto cleanup_and_exit;
         }
 
-        mbedtls_mpi_write_binary(B, *bytes_B, *len_B);
-        ver->bytes_B = *bytes_B;
+        ver->bytes_B = bytes_B;
     }
 
     cleanup_and_exit:
@@ -597,10 +525,6 @@ struct SRPVerifier *srp_verifier_new(SRP_HashAlgorithm alg, SRP_NGType ng_type, 
     if (u) {
         mbedtls_mpi_free(u);
         free(u);
-    }
-    if (k) {
-        mbedtls_mpi_free(k);
-        free(k);
     }
     mbedtls_mpi_free(B);
     free(B);

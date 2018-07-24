@@ -69,28 +69,16 @@ extern "C" {
 //#define SHA224_DIGEST_LENGTH 224
 //#define SHA256_DIGEST_LENGTH 256
 //#define SHA384_DIGEST_LENGTH 384
-#define SHA512_DIGEST_LENGTH 512
+#define SHA512_DIGEST_LENGTH 64
 #define BIGNUM	mbedtls_mpi
-struct SRPVerifier;
-struct SRPUser;
 
 typedef enum
 {
-	SRP_NG_512,
-	SRP_NG_768,
-    SRP_NG_1024,
-    SRP_NG_2048,
-    SRP_NG_4096,
-    SRP_NG_8192,
     SRP_NG_CUSTOM
 } SRP_NGType;
 
 typedef enum 
 {
-    SRP_SHA1, 
-    SRP_SHA224, 
-    SRP_SHA256,
-    SRP_SHA384, 
     SRP_SHA512
 } SRP_HashAlgorithm;
 
@@ -108,6 +96,45 @@ typedef struct NGHex {
 	const char *g_hex;
 } NGHex;
 
+struct SRPVerifier {
+	SRP_HashAlgorithm hash_alg;
+	NGConstant *ng;
+
+	const char *username;
+	const unsigned char *bytes_B;
+	int authenticated;
+
+	unsigned char M[SHA512_DIGEST_LENGTH];
+	unsigned char H_AMK[SHA512_DIGEST_LENGTH];
+	unsigned char session_key[SHA512_DIGEST_LENGTH];
+};
+
+
+struct SRPUser {
+	SRP_HashAlgorithm hash_alg;
+	NGConstant *ng;
+
+	BIGNUM *a;
+	BIGNUM *A;
+	BIGNUM *S;
+
+	const unsigned char *bytes_A;
+	int authenticated;
+
+	const char *username;
+	const unsigned char *password;
+	int password_len;
+
+	unsigned char M[SHA512_DIGEST_LENGTH];
+	unsigned char H_AMK[SHA512_DIGEST_LENGTH];
+	unsigned char session_key[SHA512_DIGEST_LENGTH];
+};
+
+void calculate_M(SRP_HashAlgorithm alg, NGConstant *ng, unsigned char *dest, const char *I, const BIGNUM *s,
+				 const BIGNUM *A, const BIGNUM *B, const unsigned char *K);
+void calculate_H_AMK(SRP_HashAlgorithm alg, unsigned char *dest, const BIGNUM *A, const unsigned char *M,
+					 const unsigned char *K);
+void hash_num(SRP_HashAlgorithm alg, const BIGNUM *n, unsigned char *dest);
 NGConstant * new_ng(SRP_NGType ng_type, const char *n_hex, const char *g_hex);
 void delete_ng(NGConstant *ng);
 BIGNUM *H_nn(SRP_HashAlgorithm alg, const BIGNUM *n1, const BIGNUM *n2);
@@ -154,12 +181,12 @@ void srp_create_salted_verification_key( SRP_HashAlgorithm alg,
  * 
  * The n_hex and g_hex parameters should be 0 unless SRP_NG_CUSTOM is used for ng_type
  */
-struct SRPVerifier *  srp_verifier_new( SRP_HashAlgorithm alg, SRP_NGType ng_type, const char * username,
+struct SRPVerifier *  srp_verifier_new( const char * username,
                                         const unsigned char * bytes_s, int len_s, 
                                         const unsigned char * bytes_v, int len_v,
                                         const unsigned char * bytes_A, int len_A,
-                                        const unsigned char ** bytes_B, int * len_B,
-                                        const char * n_hex, const char * g_hex );
+                                        const unsigned char * bytes_B, int len_B,
+										NGConstant * ng );
 
 
 void                  srp_verifier_delete( struct SRPVerifier * ver );

@@ -44,7 +44,7 @@ void tlv8_free(tlv8_item *chain) {
     }
 }
 
-const tlv8_item *tlv8_find(const tlv8_item *chain, tlv8_type type) {
+tlv8_item *tlv8_find(tlv8_item *chain, tlv8_type type) {
     //Start searching from the start of the chain
     while (chain->previous != nullptr){
         chain = chain->previous;
@@ -53,7 +53,7 @@ const tlv8_item *tlv8_find(const tlv8_item *chain, tlv8_type type) {
     return tlv8_find_next(chain, type);
 }
 
-const tlv8_item *tlv8_find_next(const tlv8_item *chain, tlv8_type type) {
+tlv8_item *tlv8_find_next(tlv8_item *chain, tlv8_type type) {
     while (chain != nullptr && chain->type != type){
         chain = chain->next;
     }
@@ -92,7 +92,7 @@ unsigned int tlv8_read(tlv8_item *item, uint8_t *buffer, unsigned int length) {
 
 unsigned int tlv8_value_length(const tlv8_item *item) {
     unsigned int length = item->length;
-    while (item->next->type == item->type){
+    while (item->next && item->next->type == item->type){
         item = item->next;
         length += item->length;
     }

@@ -75,7 +75,7 @@ tlv8_item * tlv8_parse(uint8_t * data, unsigned int length);
  * @param type
  * @return
  */
-const tlv8_item * tlv8_find(const tlv8_item * chain, tlv8_type type) __attribute((pure));
+tlv8_item * tlv8_find(tlv8_item * chain, tlv8_type type) __attribute((pure));
 
 /**
  * Find the item with the specific type after the given item.
@@ -84,7 +84,7 @@ const tlv8_item * tlv8_find(const tlv8_item * chain, tlv8_type type) __attribute
  * @param type
  * @return
  */
-const tlv8_item * tlv8_find_next(const tlv8_item * chain, tlv8_type type) __attribute((pure));
+tlv8_item * tlv8_find_next(tlv8_item * chain, tlv8_type type) __attribute((pure));
 
 /**
  * Read 'length' bytes of data from 'item' to 'buffer'. This will shift the

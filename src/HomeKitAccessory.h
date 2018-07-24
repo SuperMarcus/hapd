@@ -83,6 +83,11 @@ public:
 
         HAPCRYPTO_SRP_INIT_FINISH_GEN_SALT,
         HAPCRYPTO_SRP_INIT_COMPLETE,
+
+        HAPCRYPTO_SRP_PROOF_VERIFIER_CREATED,
+        HAPCRYPTO_SRP_PROOF_SKEY_GENERATED,
+        HAPCRYPTO_SRP_PROOF_SSIDE_GENERATED,
+        HAPCRYPTO_SRP_PROOF_COMPLETE
     };
 
     template <typename T = void *>
@@ -133,6 +138,7 @@ private:
     void _onConnect(HAPEvent *);
     void _onDisconnect(HAPEvent *);
     void _onSetupInitComplete(HAPEvent *);
+    void _onSetupProofComplete(HAPEvent *);
 
     void _updateSDRecords(HAPEvent *);
 
@@ -143,7 +149,7 @@ private:
 
 private:
     friend class HAPPairingsManager;
-    friend void hap_crypto_srp_init(hap_crypto_setup * info);
+
     void * mdns_handle = nullptr;
     const char * deviceName = "HomeKit Device";
     const char * deviceId = "F6:A4:35:E3:0A:E2";
@@ -152,6 +158,9 @@ private:
 };
 
 struct hap_pair_info{
+public:
+    ~hap_pair_info();
+
 private:
     friend class HAPServer;
     friend class HAPPairingsManager;
@@ -170,7 +179,8 @@ private:
     explicit HAPPairingsManager(HAPServer *);
 
     void onPairSetup(HAPUserHelper *);
-    void onPairSetupM1Finish(hap_crypto_setup *);
+    void onPairSetupM2Finish(hap_crypto_setup *);
+    void onPairSetupM4Finish(hap_crypto_setup *);
 
     HAPServer * server;
 };

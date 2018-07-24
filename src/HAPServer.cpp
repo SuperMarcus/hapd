@@ -19,6 +19,7 @@ void HAPServer::begin(uint16_t port) {
 
     //For HAPPairingsManager
     _onSelf(HAPEvent::HAPCRYPTO_SRP_INIT_COMPLETE, &HAPServer::_onSetupInitComplete);
+    _onSelf(HAPEvent::HAPCRYPTO_SRP_PROOF_COMPLETE, &HAPServer::_onSetupProofComplete);
 
     server_conn = new hap_network_connection;
     server_conn->raw = nullptr;
@@ -172,5 +173,9 @@ void HAPServer::_onDisconnect(HAPEvent * event) {
 }
 
 void HAPServer::_onSetupInitComplete(HAPEvent * event) {
-    pairingsManager->onPairSetupM1Finish(event->arg<hap_crypto_setup>());
+    pairingsManager->onPairSetupM2Finish(event->arg<hap_crypto_setup>());
+}
+
+void HAPServer::_onSetupProofComplete(HAPEvent * event) {
+    pairingsManager->onPairSetupM4Finish(event->arg<hap_crypto_setup>());
 }
