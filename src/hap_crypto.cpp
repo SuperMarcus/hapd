@@ -7,12 +7,13 @@
 #include "crypto/bignum.h"
 #include "crypto/sha512.h"
 #include "crypto/srp.h"
+#include "crypto/chachapoly.h"
 #include "HomeKitAccessory.h"
 
 #include <cstring>
 #include <random>
 
-static const uint8_t _N[] PROGMEM = {
+static const uint8_t _modulus[] PROGMEM = {
         0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xc9, 0x0f, 0xda, 0xa2,
         0x21, 0x68, 0xc2, 0x34, 0xc4, 0xc6, 0x62, 0x8b, 0x80, 0xdc, 0x1c, 0xd1,
         0x29, 0x02, 0x4e, 0x08, 0x8a, 0x67, 0xcc, 0x74, 0x02, 0x0b, 0xbe, 0xa6,
@@ -47,7 +48,7 @@ static const uint8_t _N[] PROGMEM = {
         0xa9, 0x3a, 0xd2, 0xca, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff
 };
 
-static uint8_t _g[] PROGMEM = {
+static const uint8_t _generator[] PROGMEM = {
         0x05
 };
 
@@ -73,13 +74,13 @@ static NGConstant * _hap_read_ng(){
     auto ng = new NGConstant;
 
     auto N = new uint8_t[HAPCRYPTO_SRP_MODULUS_SIZE]();
-    memcpy_P(N, _N, HAPCRYPTO_SRP_MODULUS_SIZE);
+    memcpy_P(N, _modulus, HAPCRYPTO_SRP_MODULUS_SIZE);
     ng->N = _mpiNew();
     mbedtls_mpi_read_binary(ng->N, N, HAPCRYPTO_SRP_MODULUS_SIZE);
     delete[] N;
 
     auto g = new uint8_t[HAPCRYPTO_SRP_GENERATOR_SIZE]();
-    memcpy_P(g, _g, HAPCRYPTO_SRP_GENERATOR_SIZE);
+    memcpy_P(g, _generator, HAPCRYPTO_SRP_GENERATOR_SIZE);
     ng->g = _mpiNew();
     mbedtls_mpi_read_binary(ng->g, g, HAPCRYPTO_SRP_GENERATOR_SIZE);
     delete[] g;
@@ -415,6 +416,33 @@ void _srpProof_onM_thenAMK(HAPEvent * event){
     info->server->emit(HAPEvent::HAPCRYPTO_SRP_PROOF_COMPLETE, info);
 }
 
+void _chachaPoly_decrypt(HAPEvent * event){
+    auto info = event->arg<hap_crypto_info>();
+
+    unsigned char nonce[12];
+    memset(nonce, 0, sizeof(nonce));
+    memcpy(nonce + 16 - info->nonceLen, info->nonce, info->nonceLen);
+
+    delete[] info->rawData;
+    info->rawData = new uint8_t[info->dataLen];
+
+    auto ctx = new mbedtls_chachapoly_context;
+    mbedtls_chachapoly_init(ctx);
+    mbedtls_chachapoly_setkey(ctx, info->key);
+    auto ret = mbedtls_chachapoly_auth_decrypt(
+            ctx, info->dataLen, nonce, info->aad, info->aadLen,
+            info->authTag, info->encryptedData, info->rawData
+    );
+    mbedtls_chachapoly_free(ctx);
+
+    delete ctx;
+
+    if(ret == 0){
+        delete[] info->encryptedData;//Free encrypted data after decrypted
+        info->encryptedData = nullptr;
+    }
+}
+
 void hap_crypto_init(HAPServer * server) {
     //M1
     server->on(HAPEvent::HAPCRYPTO_SRP_INIT_FINISH_GEN_SALT, _srpInit_onGenSalt_thenGenPub);
@@ -422,6 +450,9 @@ void hap_crypto_init(HAPServer * server) {
     server->on(HAPEvent::HAPCRYPTO_SRP_PROOF_VERIFIER_CREATED, _srpProof_onVerifierCreate_thenGenSKey);
     server->on(HAPEvent::HAPCRYPTO_SRP_PROOF_SKEY_GENERATED, _srpProof_onSKey_thenM);
     server->on(HAPEvent::HAPCRYPTO_SRP_PROOF_SSIDE_GENERATED, _srpProof_onM_thenAMK);
+
+    //Chachapoly decrypt
+    server->on(HAPEvent::HAPCRYPTO_NEED_DECRYPT, _chachaPoly_decrypt);
 }
 
 void hap_crypto_srp_free(hap_crypto_setup * info) {
@@ -433,6 +464,14 @@ void hap_crypto_srp_free(hap_crypto_setup * info) {
 bool hap_crypto_verify_client_proof(hap_crypto_setup * info) {
     auto verifier = static_cast<SRPVerifier *>(info->handle);
     return memcmp(verifier->M, info->clientProof, HAPCRYPTO_SHA_SIZE) == 0;
+}
+
+void hap_crypto_data_decrypt(hap_crypto_info * info) {
+    info->server->emit(HAPEvent::HAPCRYPTO_NEED_DECRYPT, info);
+}
+
+bool hap_crypto_data_decrypt_did_succeed(hap_crypto_info * info) {
+    return info->encryptedData == nullptr;
 }
 
 hap_crypto_setup::hap_crypto_setup(HAPServer *server, const char * user, const char * pass):
@@ -448,4 +487,22 @@ hap_crypto_setup::~hap_crypto_setup() {
     //Not deleting session key since its referenced from verifier
     delete[] clientProof;
     //Not deleting server proof since its also ref from ver
+}
+
+hap_crypto_info::hap_crypto_info(HAPServer * server, HAPUserHelper * session):
+    server(server), session(session){ }
+
+hap_crypto_info::~hap_crypto_info() {
+    free();
+}
+
+void hap_crypto_info::free() {
+    dataLen = 0;
+    delete[] encryptedData;
+    delete[] rawData;
+    //Not deleting authTag, since in every scenario auth tag is appended after encryptedData
+//    delete[] authTag;
+    encryptedData = nullptr;
+    rawData = nullptr;
+    authTag = nullptr;
 }

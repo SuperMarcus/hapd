@@ -6,7 +6,6 @@ class HAPPairingsManager;
 struct HAPEvent;
 struct HAPEventListener;
 
-struct hap_pair_info;
 struct tlv8_item;
 
 class HAPUserHelper {
@@ -82,12 +81,18 @@ public:
          */
 
         HAPCRYPTO_SRP_INIT_FINISH_GEN_SALT,
-        HAPCRYPTO_SRP_INIT_COMPLETE,
+        HAPCRYPTO_SRP_INIT_COMPLETE, //Handled by HAPServer
 
         HAPCRYPTO_SRP_PROOF_VERIFIER_CREATED,
         HAPCRYPTO_SRP_PROOF_SKEY_GENERATED,
         HAPCRYPTO_SRP_PROOF_SSIDE_GENERATED,
-        HAPCRYPTO_SRP_PROOF_COMPLETE
+        HAPCRYPTO_SRP_PROOF_COMPLETE, //Handled by HAPServer
+
+        //ChachaPoly encrypt/decrypt
+        HAPCRYPTO_NEED_ENCRYPT,
+        HAPCRYPTO_NEED_DECRYPT,
+        HAPCRYPTO_ENCRYPTED, //Handled by HAPServer
+        HAPCRYPTO_DECRYPTED //Handled by HAPServer
     };
 
     template <typename T = void *>
@@ -139,6 +144,7 @@ private:
     void _onDisconnect(HAPEvent *);
     void _onSetupInitComplete(HAPEvent *);
     void _onSetupProofComplete(HAPEvent *);
+    void _onDataDecrypted(HAPEvent *);
 
     void _updateSDRecords(HAPEvent *);
 
@@ -170,7 +176,14 @@ private:
     bool isPairing = false;
     uint8_t currentStep = 0;
 
+    //Only used during setup
     hap_crypto_setup * setupStore = nullptr;
+    hap_crypto_info * infoStore = nullptr;
+
+    HAPServer * server;
+
+    explicit hap_pair_info(HAPServer *);
+    void renewInfoStore(HAPUserHelper *);
 };
 
 class HAPPairingsManager {
@@ -181,6 +194,8 @@ private:
     void onPairSetup(HAPUserHelper *);
     void onPairSetupM2Finish(hap_crypto_setup *);
     void onPairSetupM4Finish(hap_crypto_setup *);
+
+    void onPairingDeviceDecryption(hap_pair_info *, HAPUserHelper *);
 
     HAPServer * server;
 };

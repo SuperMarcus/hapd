@@ -14,6 +14,28 @@
 
 class HAPUserHelper;
 
+struct hap_crypto_info {
+    HAPServer * server;
+    HAPUserHelper * session;
+
+    uint8_t * encryptedData = nullptr;
+    uint8_t * authTag = nullptr;
+    uint8_t * rawData = nullptr;
+
+    const uint8_t * nonce = nullptr;
+    const uint8_t * aad = nullptr;
+    const uint8_t * key = nullptr;
+
+    unsigned int dataLen = 0;
+    unsigned int nonceLen = 0;
+    unsigned int aadLen = 0;
+
+    void free();
+
+    hap_crypto_info(HAPServer *, HAPUserHelper *);
+    ~hap_crypto_info();
+};
+
 struct hap_crypto_setup {
     const uint8_t * salt = nullptr;
     const uint8_t * verifier = nullptr;
@@ -72,5 +94,15 @@ bool hap_crypto_verify_client_proof(hap_crypto_setup *);
  * Free the handle inside setup info
  */
 void hap_crypto_srp_free(hap_crypto_setup *);
+
+/**
+ * Decrypt the data and emits
+ */
+void hap_crypto_data_decrypt(hap_crypto_info *);
+
+/**
+ * @return true if decryption succeeds
+ */
+bool hap_crypto_data_decrypt_did_succeed(hap_crypto_info *);
 
 #endif //ARDUINOHOMEKIT_HAP_CRYPTO_H

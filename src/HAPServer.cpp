@@ -1,5 +1,7 @@
 #include "HomeKitAccessory.h"
 #include "network.h"
+#include "hap_crypto.h"
+
 #include <cstring>
 
 HAPServer HKAccessory;
@@ -16,6 +18,8 @@ void HAPServer::begin(uint16_t port) {
     _onSelf(HAPEvent::HAP_NET_RECEIVE_REQUEST, &HAPServer::_onRequestReceived);
     _onSelf(HAPEvent::HAP_NET_CONNECT, &HAPServer::_onConnect);
     _onSelf(HAPEvent::HAP_NET_DISCONNECT, &HAPServer::_onDisconnect);
+
+    _onSelf(HAPEvent::HAPCRYPTO_DECRYPTED, &HAPServer::_onDataDecrypted);
 
     //For HAPPairingsManager
     _onSelf(HAPEvent::HAPCRYPTO_SRP_INIT_COMPLETE, &HAPServer::_onSetupInitComplete);
@@ -163,7 +167,7 @@ HAPServer::~HAPServer() {
 
 void HAPServer::_onConnect(HAPEvent * event) {
     auto c = event->arg<hap_network_connection>();
-    c->user->pair_info = new hap_pair_info();
+    c->user->pair_info = new hap_pair_info(this);
 }
 
 void HAPServer::_onDisconnect(HAPEvent * event) {
@@ -178,4 +182,14 @@ void HAPServer::_onSetupInitComplete(HAPEvent * event) {
 
 void HAPServer::_onSetupProofComplete(HAPEvent * event) {
     pairingsManager->onPairSetupM4Finish(event->arg<hap_crypto_setup>());
+}
+
+void HAPServer::_onDataDecrypted(HAPEvent * event) {
+    auto info = event->arg<hap_crypto_info>();
+    auto pairInfo = info->session->pairInfo();
+
+    //If isPairing or isVerifying, let PairingsManager handle this decryption
+    if(pairInfo->isPairing){
+        pairingsManager->onPairingDeviceDecryption(pairInfo, info->session);
+    }
 }

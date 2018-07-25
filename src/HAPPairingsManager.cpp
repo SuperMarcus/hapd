@@ -79,6 +79,34 @@ void HAPPairingsManager::onPairSetup(HAPUserHelper * request) {
             pairInfo->currentStep = 4;
             break;
         }
+        case 5: { //M5
+            const constexpr static uint8_t Msg5Nonce[] = "PS-Msg05";
+            const constexpr static unsigned int Msg5NonceLen = sizeof(Msg5Nonce) - 1;
+
+            auto dataTlv = tlv8_find(chain, kTLVType_EncryptedData);
+            auto dataTagLen = tlv8_value_length(dataTlv);
+
+            if(dataTagLen > 16){
+                auto data = new uint8_t[dataTagLen];
+                tlv8_read(dataTlv, data, dataTagLen);
+                pairInfo->renewInfoStore(request);
+
+                auto store = pairInfo->infoStore;
+                store->rawData = data;
+                store->dataLen = dataTagLen - 16;
+                store->authTag = data + store->dataLen;
+
+                store->nonce = Msg5Nonce;
+                store->nonceLen = Msg5NonceLen;
+                store->aad = nullptr;
+                store->aadLen = 0;
+
+                pairInfo->currentStep = 6;
+                //TODO: release this thing
+                request->retain();
+                hap_crypto_data_decrypt(pairInfo->infoStore);
+            }
+        }
         default:
             HAP_DEBUG("Unknown pairing step %u", requestPairStep);
     }
@@ -120,6 +148,26 @@ void HAPPairingsManager::onPairSetupM4Finish(hap_crypto_setup * info) {
     request->release();
 }
 
+void HAPPairingsManager::onPairingDeviceDecryption(hap_pair_info * info, HAPUserHelper * request) {
+    if(info->currentStep == 6){
+        if(hap_crypto_data_decrypt_did_succeed(info->infoStore)){
+
+        }else{
+            uint8_t errAuth = kTLVError_Authentication;
+            auto resTlv = tlv8_insert(nullptr, kTLVType_Error, 1, &errAuth);
+            request->setResponseStatus(400);
+            request->send(resTlv);
+        }
+    }
+}
+
 hap_pair_info::~hap_pair_info() {
     delete setupStore;
+}
+
+hap_pair_info::hap_pair_info(HAPServer * server): server(server) { }
+
+void hap_pair_info::renewInfoStore(HAPUserHelper * session) {
+    delete infoStore;
+    infoStore = new hap_crypto_info(server, session);
 }

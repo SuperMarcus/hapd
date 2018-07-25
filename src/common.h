@@ -7,21 +7,23 @@
 
 #include "platform.h"
 
-#include <cstdbool>
-#include <cstdint>
-#include <cstdlib>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdlib.h>
 
 #ifndef HAP_DEBUG
 
 #if defined(USE_HARDWARE_SERIAL)
 #include <HardwareSerial.h>
-#define HAP_DEBUG(message, ...) Serial.printf_P(PSTR( __FILE__ ":%d [%s] " message "\n", __LINE__ ), __FUNCTION__, ##__VA_ARGS__)
+#define HAP_DEBUG(message, ...) Serial.printf_P(PSTR( __FILE__ ":%d [%s] " message "\n" ), __LINE__, __FUNCTION__, ##__VA_ARGS__)
 #elif defined(USE_PRINTF)
-#include <cstdio>
+#include <stdio.h>
 #define HAP_DEBUG(message, ...) fprintf(stdout, __FILE__ ":%d [%s] " message "\n", __LINE__, __FUNCTION__, ##__VA_ARGS__)
 #else
 #define HAP_DEBUG(message, ...)
 #endif
+
+#define MBEDTLS_PLATFORM_PRINTF_MACRO HAP_DEBUG
 
 #endif
 
@@ -47,6 +49,7 @@
 
 class HAPServer;
 struct hap_pair_info;
+struct hap_crypto_info;
 struct hap_crypto_setup;
 
 enum hap_msg_type {

@@ -2154,7 +2154,7 @@
  *
  * Requires: MBEDTLS_BIGNUM_C and at least one MBEDTLS_ECP_DP_XXX_ENABLED
  */
-#define MBEDTLS_ECP_C
+//#define MBEDTLS_ECP_C
 
 /**
  * \def MBEDTLS_ENTROPY_C
@@ -2436,7 +2436,7 @@
  *
  * Uncomment to enable generic public key wrappers.
  */
-#define MBEDTLS_PK_C
+//#define MBEDTLS_PK_C
 
 /**
  * \def MBEDTLS_PK_PARSE_C
