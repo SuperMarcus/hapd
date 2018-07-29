@@ -142,6 +142,9 @@ static mbedtls_mpi * _sha512FinalMpi(mbedtls_sha512_context * ctx){
     return mpi;
 }
 
+//TODO: remove
+extern void hexdump(const void *ptr, int buflen);
+
 struct _srp_genver_substep_info {
     NGConstant * ng;
     mbedtls_mpi * v, * x;
@@ -175,6 +178,7 @@ void hap_crypto_srp_init(hap_crypto_setup * info) {
     auto s = _mpiNew();
     csrp_init_random();
     mbedtls_mpi_fill_random(s, HAPCRYPTO_SALT_SIZE, &mbedtls_ctr_drbg_random, csrp_ctr_drbg_ctx());
+
     info->salt = new uint8_t[HAPCRYPTO_SALT_SIZE];
     mbedtls_mpi_write_binary(s, const_cast<unsigned char *>(info->salt), HAPCRYPTO_SALT_SIZE);
     _mpiFree(s);
@@ -257,6 +261,7 @@ void _srpInit_genPub_substep(void * handle, int ret){
     _mpiFree(B);
 
     info->server->emit(HAPEvent::HAPCRYPTO_SRP_INIT_COMPLETE, info);
+    delete store;
 }
 
 /**

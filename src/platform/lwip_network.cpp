@@ -197,7 +197,10 @@ bool hap_network_send(hap_network_connection * client, const uint8_t * data, uns
         return false;
     }
 
-    return false;
+    //todo: remove
+    HAP_DEBUG("Bytes sent: %d", length);
+
+    return true;
 }
 
 /**

@@ -61,19 +61,26 @@ void HAPServer::handle() {
 void hexdump(const void *ptr, int buflen) {
     auto *buf = (unsigned const char*)ptr;
     int i, j;
+
+    auto lineBuf = new char[256];
     for (i=0; i<buflen; i+=16) {
-        printf("%06x: ", i);
+        memset(lineBuf, ' ', 255);
+        lineBuf[255] = '\x00';
+        auto _p = lineBuf;
+
+        _p += sprintf(_p, "%06x: ", i);
         for (j=0; j<16; j++)
             if (i+j < buflen)
-                printf("%02x ", buf[i+j]);
+                _p += sprintf(_p, "%02x ", buf[i+j]);
             else
-                printf("   ");
-        printf(" ");
+                _p += sprintf(_p, "   ");
+        _p += sprintf(_p, " ");
         for (j=0; j<16; j++)
             if (i+j < buflen)
-                printf("%c", isprint(buf[i+j]) ? buf[i+j] : '.');
-        printf("\n");
+                _p += sprintf(_p, "%c", isprint(buf[i+j]) ? buf[i+j] : '.');
+        HAP_DEBUG("%s", lineBuf);
     }
+    delete[] lineBuf;
 }
 
 void HAPServer::_onRequestReceived(HAPEvent * e) {

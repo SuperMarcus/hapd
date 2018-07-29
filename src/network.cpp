@@ -319,16 +319,29 @@ void hap_network_response(hap_network_connection *client) {
 
     auto frame_buf = new char[1024]();
     auto frame_ptr = frame_buf;
+
+#define _NEWCPY(name, ptr) \
+    auto (name) = new char[strlen_P(ptr)](); \
+    strcpy_P(name, ptr);
+
+    _NEWCPY(msg_type, msg_type_ptr);
+    _NEWCPY(status, status_ptr);
+    _NEWCPY(ctype_hdr, _header_content_type);
+    _NEWCPY(ctype_val, ctype_ptr);
+    _NEWCPY(clen_hdr, _header_content_length);
+
     frame_ptr += snprintf_P(frame_ptr, 1024,
-#ifdef NATIVE_STRINGS
                "%s %s\r\n%s: %s\r\n%s: %u\r\n\r\n",
-#else
-               PSTR("%S %S\r\n%S: %S\r\n%S: %u\r\n\r\n"),
-#endif
-               msg_type_ptr, status_ptr,
-               _header_content_type, ctype_ptr,
-               _header_content_length, header->content_length
+               msg_type, status,
+               ctype_hdr, ctype_val,
+               clen_hdr, header->content_length
     );
+
+    delete msg_type;
+    delete status;
+    delete ctype_hdr;
+    delete ctype_val;
+    delete clen_hdr;
 
     auto bodyPtr = user->response_buffer;
     while ((bodyPtr - user->response_buffer) < header->content_length){
