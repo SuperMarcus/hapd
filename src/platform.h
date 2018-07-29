@@ -11,6 +11,11 @@
 #define USE_HARDWARE_SERIAL
 #define USE_ESPARDUINO_MDNS
 #define DETERMINED_PLATFORM
+
+/**
+ * Must use async math with esp8266, cpu set to 160Mhz is also suggested
+ */
+#define USE_ASYNC_MATH
 #endif
 
 #endif
@@ -30,9 +35,9 @@
 #define memcpy_P memcpy
 #define sprintf_P sprintf
 #define snprintf_P snprintf
+#define strcpy_P strcpy
+
 #endif
 
-//Enable this for now
-#define USE_ASYNC_MATH
 
 #endif

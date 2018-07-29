@@ -330,11 +330,11 @@ void hap_network_response(hap_network_connection *client) {
                clen_hdr, header->content_length
     );
 
-    delete msg_type;
-    delete status;
-    delete ctype_hdr;
-    delete ctype_val;
-    delete clen_hdr;
+    delete[] msg_type;
+    delete[] status;
+    delete[] ctype_hdr;
+    delete[] ctype_val;
+    delete[] clen_hdr;
 
     auto bodyPtr = user->response_buffer;
     while ((bodyPtr - user->response_buffer) < header->content_length){
