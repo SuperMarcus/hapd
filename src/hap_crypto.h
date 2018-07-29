@@ -11,6 +11,7 @@
 #define HAPCRYPTO_SRP_GENERATOR_SIZE    1
 #define HAPCRYPTO_SALT_SIZE             16
 #define HAPCRYPTO_SHA_SIZE              64
+#define HAPCRYPTO_CHACHA_KEYSIZE        32
 
 class HAPUserHelper;
 
@@ -24,7 +25,9 @@ struct hap_crypto_info {
 
     const uint8_t * nonce = nullptr;
     const uint8_t * aad = nullptr;
-    const uint8_t * key = nullptr;
+
+    uint8_t decryptKey[HAPCRYPTO_CHACHA_KEYSIZE];
+    uint8_t encryptKey[HAPCRYPTO_CHACHA_KEYSIZE];
 
     unsigned int dataLen = 0;
     unsigned int nonceLen = 0;
@@ -70,6 +73,8 @@ struct hap_crypto_setup {
 void hap_crypto_init(HAPServer *);
 
 /**
+ * Async function
+ *
  * Init srp, generate the 16bytes salt and store it
  * in hap_crypto_setup.salt.
  *
@@ -79,11 +84,15 @@ void hap_crypto_init(HAPServer *);
 void hap_crypto_srp_init(hap_crypto_setup *);
 
 /**
+ * Async function
+ *
  * Verify client's srp proof and public key
  */
 void hap_crypto_srp_proof(hap_crypto_setup *);
 
 /**
+ * Synchronized function
+ *
  * Verify the client's proof with calculated M
  *
  * @return true if authenticated
@@ -91,18 +100,36 @@ void hap_crypto_srp_proof(hap_crypto_setup *);
 bool hap_crypto_verify_client_proof(hap_crypto_setup *);
 
 /**
+ * Synchronized function
+ *
  * Free the handle inside setup info
  */
 void hap_crypto_srp_free(hap_crypto_setup *);
 
 /**
+ * Async function
+ *
  * Decrypt the data and emits
  */
 void hap_crypto_data_decrypt(hap_crypto_info *);
 
 /**
+ * Synchronized function
+ *
  * @return true if decryption succeeds
  */
 bool hap_crypto_data_decrypt_did_succeed(hap_crypto_info *);
+
+/**
+ * Synchronized function, maybe change it to async later?
+ *
+ * Derive the 32 bytes key with HKDF-SHA-512, and
+ *
+ * @param dst 32 bytes destination buffer, must be allocated
+ * @param input Input key of size #HAPCRYPTO_SHA_SIZE
+ * @param salt The cstring salt, end with \x00
+ * @param info  Cstring info, end with \x00
+ */
+void hap_crypto_derive_key(uint8_t * dst, const uint8_t * input, const char * salt, const char * info);
 
 #endif //ARDUINOHOMEKIT_HAP_CRYPTO_H

@@ -82,6 +82,8 @@ void HAPPairingsManager::onPairSetup(HAPUserHelper * request) {
         case 5: { //M5
             const constexpr static uint8_t Msg5Nonce[] = "PS-Msg05";
             const constexpr static unsigned int Msg5NonceLen = sizeof(Msg5Nonce) - 1;
+            const constexpr static char hkdfSalt[] = "Pair-Setup-Encrypt-Salt";
+            const constexpr static char hkdfInfo[] = "Pair-Setup-Encrypt-Info";
 
             auto dataTlv = tlv8_find(chain, kTLVType_EncryptedData);
             auto dataTagLen = tlv8_value_length(dataTlv);
@@ -92,7 +94,7 @@ void HAPPairingsManager::onPairSetup(HAPUserHelper * request) {
                 pairInfo->renewInfoStore(request);
 
                 auto store = pairInfo->infoStore;
-                store->rawData = data;
+                store->encryptedData = data;
                 store->dataLen = dataTagLen - 16;
                 store->authTag = data + store->dataLen;
 
@@ -101,11 +103,16 @@ void HAPPairingsManager::onPairSetup(HAPUserHelper * request) {
                 store->aad = nullptr;
                 store->aadLen = 0;
 
+                hap_crypto_derive_key(const_cast<uint8_t *>(store->decryptKey),
+                                      setupStore->sessionKey, hkdfSalt, hkdfInfo);
+
                 pairInfo->currentStep = 6;
                 //TODO: release this thing
                 request->retain();
                 hap_crypto_data_decrypt(pairInfo->infoStore);
             }
+
+            break;
         }
         default:
             HAP_DEBUG("Unknown pairing step %u", requestPairStep);
@@ -136,7 +143,7 @@ void HAPPairingsManager::onPairSetupM4Finish(hap_crypto_setup * info) {
     tlv8_item * response = nullptr;
 
     if(hap_crypto_verify_client_proof(info)){
-        response = tlv8_insert(response, kTLVType_Proof, 64, info->serverProof);
+        response = tlv8_insert(response, kTLVType_Proof, HAPCRYPTO_SHA_SIZE, info->serverProof);
     } else {
         uint8_t error = kTLVError_Authentication;
         response = tlv8_insert(response, kTLVType_Error, 1, &error);
@@ -149,15 +156,15 @@ void HAPPairingsManager::onPairSetupM4Finish(hap_crypto_setup * info) {
 }
 
 void HAPPairingsManager::onPairingDeviceDecryption(hap_pair_info * info, HAPUserHelper * request) {
-    if(info->currentStep == 6){
-        if(hap_crypto_data_decrypt_did_succeed(info->infoStore)){
+    if(info->currentStep != 6) return;
 
-        }else{
-            uint8_t errAuth = kTLVError_Authentication;
-            auto resTlv = tlv8_insert(nullptr, kTLVType_Error, 1, &errAuth);
-            request->setResponseStatus(400);
-            request->send(resTlv);
-        }
+    if(hap_crypto_data_decrypt_did_succeed(info->infoStore)){
+        HAP_DEBUG("UNImplemented");
+    }else{
+        uint8_t errAuth = kTLVError_Authentication;
+        auto resTlv = tlv8_insert(nullptr, kTLVType_Error, 1, &errAuth);
+        request->setResponseStatus(400);
+        request->send(resTlv);
     }
 }
 

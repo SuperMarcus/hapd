@@ -9,6 +9,7 @@
 #ifdef ARDUINO_ARCH_ESP8266
 #define USE_HAP_LWIP
 #define USE_HARDWARE_SERIAL
+#define USE_ESPARDUINO_MDNS
 #define DETERMINED_PLATFORM
 #endif
 
@@ -30,5 +31,8 @@
 #define sprintf_P sprintf
 #define snprintf_P snprintf
 #endif
+
+//Enable this for now
+#define USE_ASYNC_MATH
 
 #endif

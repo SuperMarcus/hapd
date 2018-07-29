@@ -2869,6 +2869,11 @@
  */
 //#define MBEDTLS_XTEA_C
 
+/**
+ * Enable Virgil Security's ed25519 implementation
+ */
+#define MBEDTLS_ED25519_C
+
 /* \} name SECTION: mbed TLS modules */
 
 /**

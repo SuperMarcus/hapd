@@ -72,6 +72,11 @@ extern void * hap_service_discovery_init(const char * name, uint16_t port);
 extern bool hap_service_discovery_update(void *, hap_sd_txt_item *);
 
 /**
+ *
+ */
+extern void hap_service_discovery_loop(void *);
+
+/**
  * Terminate mDNS broadcast
  *
  * Called when HAPServer instance is destroyed

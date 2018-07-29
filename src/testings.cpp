@@ -19,13 +19,27 @@ int main(){
 #else
 
 #include <Arduino.h>
+#include <ESP8266WiFi.h>
 
 void setup(){
+    Serial.begin(115200);
+    Serial.setDebugOutput(true);
+    WiFi.begin("Xiaomi_CJ", "86028560");
+    HAP_DEBUG("wlan connecting");
 
+    while (WiFi.status() != WL_CONNECTED) {
+        Serial.print(".");
+        delay(200);
+    }
+    Serial.println();
+
+    HAP_DEBUG("setup");
+    HKAccessory.begin();
+    HAP_DEBUG("end");
 }
 
 void loop(){
-
+    HKAccessory.handle();
 }
 
 #endif

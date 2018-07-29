@@ -92,7 +92,12 @@ public:
         HAPCRYPTO_NEED_ENCRYPT,
         HAPCRYPTO_NEED_DECRYPT,
         HAPCRYPTO_ENCRYPTED, //Handled by HAPServer
-        HAPCRYPTO_DECRYPTED //Handled by HAPServer
+        HAPCRYPTO_DECRYPTED, //Handled by HAPServer
+
+#ifdef USE_ASYNC_MATH
+        HAPCRYPTO_ASYNC_EXPMOD_BODY,
+        HAPCRYPTO_ASYNC_EXPMOD_FINAL
+#endif
     };
 
     template <typename T = void *>

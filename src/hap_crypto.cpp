@@ -8,7 +8,10 @@
 #include "crypto/sha512.h"
 #include "crypto/srp.h"
 #include "crypto/chachapoly.h"
+#include "crypto/md.h"
+#include "crypto/hkdf.h"
 #include "HomeKitAccessory.h"
+#include "async_math.h"
 
 #include <cstring>
 #include <random>
@@ -139,6 +142,29 @@ static mbedtls_mpi * _sha512FinalMpi(mbedtls_sha512_context * ctx){
     return mpi;
 }
 
+struct _srp_genver_substep_info {
+    NGConstant * ng;
+    mbedtls_mpi * v, * x;
+    hap_crypto_setup * info;
+};
+
+void _srpInit_genver_substep(void * handle, int ret){
+    auto store = static_cast<_srp_genver_substep_info*>(handle);
+    auto info = store->info;
+
+    delete_ng(store->ng);
+    _mpiFree(store->x);
+
+    info->verifierLen = static_cast<unsigned int>(mbedtls_mpi_size(store->v));
+    info->verifier = new uint8_t[info->verifierLen];
+    mbedtls_mpi_write_binary(store->v, const_cast<unsigned char *>(info->verifier), info->verifierLen);
+    _mpiFree(store->v);
+    delete store;
+
+    //Next gen public key
+    info->server->emit(HAPEvent::HAPCRYPTO_SRP_INIT_FINISH_GEN_SALT, info);
+}
+
 /**
  * Generate salt and verifier, then emits HAPCRYPTO_SRP_INIT_FINISH_GEN_SALT
  *
@@ -178,17 +204,59 @@ void hap_crypto_srp_init(hap_crypto_setup * info) {
 
     auto ng = _hap_read_ng();
     auto v = _mpiNew();
+
+    auto store = new _srp_genver_substep_info;
+    store->info = info;
+    store->ng = ng;
+    store->x = x;
+    store->v = v;
+
+#ifdef USE_ASYNC_MATH
+    hap_crypto_math_expmod(info->server, v, ng->g, x, ng->N, store, _srpInit_genver_substep);
+#else
     mbedtls_mpi_exp_mod(v, ng->g, x, ng->N, csrp_speed_RR());
-    _mpiFree(x);
-    delete_ng(ng);
+    _srpInit_genver_substep(store, 0);
+#endif
 
-    info->verifierLen = static_cast<unsigned int>(mbedtls_mpi_size(v));
-    info->verifier = new uint8_t[info->verifierLen];
-    mbedtls_mpi_write_binary(v, const_cast<unsigned char *>(info->verifier), info->verifierLen);
-    _mpiFree(v);
+}
 
-    //Next gen public key
-    info->server->emit(HAPEvent::HAPCRYPTO_SRP_INIT_FINISH_GEN_SALT, info);
+struct _srp_genpub_substep_info{
+    mbedtls_mpi * tmp1, * tmp2, * b;
+    NGConstant * ng;
+    hap_crypto_setup * info;
+};
+
+void _srpInit_genPub_substep(void * handle, int ret){
+    auto store = static_cast<_srp_genpub_substep_info*>(handle);
+    auto info = store->info;
+
+    //Free b
+    _mpiFree(store->b);
+
+    //Calculate B, the public key
+    auto B = _mpiNew();
+    //B = tmp1+tmp2
+    mbedtls_mpi_add_mpi(B, store->tmp1, store->tmp2);
+    _mpiFree(store->tmp1);
+    _mpiFree(store->tmp2);
+
+    //Last but not least, mod N
+    mbedtls_mpi_mod_mpi(B, B, store->ng->N);
+
+    //No longer need ng, will recreate when M3
+    delete_ng(store->ng);
+
+    //Export B
+    auto BLen = mbedtls_mpi_size(B);
+    auto BBytes = new uint8_t[BLen];
+    mbedtls_mpi_write_binary(B, BBytes, BLen);
+    store->info->B = BBytes;
+    store->info->BLen = static_cast<uint16_t>(BLen);
+
+    //Free B
+    _mpiFree(B);
+
+    info->server->emit(HAPEvent::HAPCRYPTO_SRP_INIT_COMPLETE, info);
 }
 
 /**
@@ -229,38 +297,26 @@ void _srpInit_onGenSalt_thenGenPub(HAPEvent * event){
 
     //tmp1 = k*v
     mbedtls_mpi_mul_mpi(tmp1, k, v);
-    //tmp2 = g^b % N
-    mbedtls_mpi_exp_mod(tmp2, ng->g, b, ng->N, csrp_speed_RR());
 
-    //Free k, b, v
+    //Free k, v
     _mpiFree(k);
     _mpiFree(v);
-    _mpiFree(b);
 
-    //Calculate B, the public key
-    auto B = _mpiNew();
-    //B = tmp1+tmp2
-    mbedtls_mpi_add_mpi(B, tmp1, tmp2);
-    _mpiFree(tmp1);
-    _mpiFree(tmp2);
+    auto store = new _srp_genpub_substep_info;
+    store->info = info;
+    store->ng = ng;
+    store->tmp1 = tmp1;
+    store->tmp2 = tmp2;
+    store->b = b;
 
-    //Last but not least, mod N
-    mbedtls_mpi_mod_mpi(B, B, ng->N);
-
-    //No longer need ng, will recreate when M3
-    delete_ng(ng);
-
-    //Export B
-    auto BLen = mbedtls_mpi_size(B);
-    auto BBytes = new uint8_t[BLen];
-    mbedtls_mpi_write_binary(B, BBytes, BLen);
-    info->B = BBytes;
-    info->BLen = static_cast<uint16_t>(BLen);
-
-    //Free B
-    _mpiFree(B);
-
-    info->server->emit(HAPEvent::HAPCRYPTO_SRP_INIT_COMPLETE, info);
+#ifdef USE_ASYNC_MATH
+    //tmp2 = g^b % N
+    hap_crypto_math_expmod(info->server, tmp2, ng->g, b, ng->N, store, _srpInit_genPub_substep);
+#else
+    //tmp2 = g^b % N
+    mbedtls_mpi_exp_mod(tmp2, ng->g, b, ng->N, csrp_speed_RR());
+    _srpInit_genPub_substep(store, 0);
+#endif
 }
 
 void hap_crypto_srp_proof(hap_crypto_setup * info) {
@@ -421,14 +477,14 @@ void _chachaPoly_decrypt(HAPEvent * event){
 
     unsigned char nonce[12];
     memset(nonce, 0, sizeof(nonce));
-    memcpy(nonce + 16 - info->nonceLen, info->nonce, info->nonceLen);
+    memcpy(nonce + 12 - info->nonceLen, info->nonce, info->nonceLen);
 
     delete[] info->rawData;
     info->rawData = new uint8_t[info->dataLen];
 
     auto ctx = new mbedtls_chachapoly_context;
     mbedtls_chachapoly_init(ctx);
-    mbedtls_chachapoly_setkey(ctx, info->key);
+    mbedtls_chachapoly_setkey(ctx, info->decryptKey);
     auto ret = mbedtls_chachapoly_auth_decrypt(
             ctx, info->dataLen, nonce, info->aad, info->aadLen,
             info->authTag, info->encryptedData, info->rawData
@@ -441,6 +497,8 @@ void _chachaPoly_decrypt(HAPEvent * event){
         delete[] info->encryptedData;//Free encrypted data after decrypted
         info->encryptedData = nullptr;
     }
+
+    info->server->emit(HAPEvent::HAPCRYPTO_DECRYPTED, info);
 }
 
 void hap_crypto_init(HAPServer * server) {
@@ -453,6 +511,11 @@ void hap_crypto_init(HAPServer * server) {
 
     //Chachapoly decrypt
     server->on(HAPEvent::HAPCRYPTO_NEED_DECRYPT, _chachaPoly_decrypt);
+
+#ifdef USE_ASYNC_MATH
+    //Init async math handlers
+    hap_crypto_math_init(server);
+#endif
 }
 
 void hap_crypto_srp_free(hap_crypto_setup * info) {
@@ -472,6 +535,19 @@ void hap_crypto_data_decrypt(hap_crypto_info * info) {
 
 bool hap_crypto_data_decrypt_did_succeed(hap_crypto_info * info) {
     return info->encryptedData == nullptr;
+}
+
+void hap_crypto_derive_key(uint8_t * dst, const uint8_t * input, const char * salt, const char * info) {
+    auto mdInfo = mbedtls_md_info_from_type(MBEDTLS_MD_SHA512);
+    auto saltLen = strlen(salt);
+    auto infoLen = strlen(info);
+
+    mbedtls_hkdf(
+            mdInfo, reinterpret_cast<const unsigned char *>(salt),
+            saltLen, input, HAPCRYPTO_SHA_SIZE,
+            reinterpret_cast<const unsigned char *>(info), infoLen,
+            dst, HAPCRYPTO_CHACHA_KEYSIZE
+    );
 }
 
 hap_crypto_setup::hap_crypto_setup(HAPServer *server, const char * user, const char * pass):
@@ -505,4 +581,7 @@ void hap_crypto_info::free() {
     encryptedData = nullptr;
     rawData = nullptr;
     authTag = nullptr;
+
+    memset(encryptKey, 0, sizeof(encryptKey));
+    memset(decryptKey, 0, sizeof(decryptKey));
 }

@@ -38,6 +38,7 @@ void HAPServer::begin(uint16_t port) {
 void HAPServer::handle() {
     //networks
     hap_network_loop();
+    hap_service_discovery_loop(mdns_handle);
 
     //handle events
     auto currentEvent = _dequeueEvent();

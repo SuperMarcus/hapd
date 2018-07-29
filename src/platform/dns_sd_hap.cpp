@@ -18,6 +18,8 @@ void * hap_service_discovery_init(const char * name, uint16_t port){
     return nullptr;
 }
 
+void hap_service_discovery_loop(void *){}
+
 bool hap_service_discovery_update(void * handle, hap_sd_txt_item * records){
     auto ref = reinterpret_cast<DNSServiceRef>(handle);
     auto bufLen = 0;

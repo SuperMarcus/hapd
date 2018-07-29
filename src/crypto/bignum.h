@@ -759,6 +759,14 @@ int mbedtls_mpi_gen_prime( mbedtls_mpi *X, size_t nbits, int dh_flag,
                    void *p_rng );
 
 /**
+ * The followings are exported functions for async math
+ */
+void mpi_montg_init( mbedtls_mpi_uint *mm, const mbedtls_mpi *N );
+int mpi_montmul( mbedtls_mpi *A, const mbedtls_mpi *B, const mbedtls_mpi *N, mbedtls_mpi_uint mm,
+                 const mbedtls_mpi *T );
+int mpi_montred( mbedtls_mpi *A, const mbedtls_mpi *N, mbedtls_mpi_uint mm, const mbedtls_mpi *T );
+
+/**
  * \brief          Checkup routine
  *
  * \return         0 if successful, or 1 if the test failed
