@@ -200,13 +200,6 @@ void hap_event_network_receive(hap_network_connection *client, const uint8_t *or
         }
     }
 
-    //TODO: see if there is a need for 100
-//    if (user->request_header->content_length > 0) {
-//        user->response_header->status = 100;
-//        user->response_header->message_type = HTTP_1_1;
-//        hap_network_response(client);
-//    }
-
     //Creates content buffer
     if (user->request_buffer == nullptr) {
         user->request_buffer = new uint8_t[user->request_header->content_length]();

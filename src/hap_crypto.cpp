@@ -324,6 +324,13 @@ void _srpInit_onGenSalt_thenGenPub(HAPEvent * event){
 #endif
 }
 
+struct _srp_genSKey_substep_info {
+    mbedtls_mpi *tmp1, *tmp2;
+    mbedtls_mpi *u, *v, *b, *S;
+    SRPVerifier * verifier;
+    hap_crypto_setup * info;
+};
+
 void hap_crypto_srp_proof(hap_crypto_setup * info) {
     auto verifier = new SRPVerifier;
     auto ng = _hap_read_ng();
@@ -339,57 +346,19 @@ void hap_crypto_srp_proof(hap_crypto_setup * info) {
     info->server->emit(HAPEvent::HAPCRYPTO_SRP_PROOF_VERIFIER_CREATED, info);
 }
 
-void _srpProof_onVerifierCreate_thenGenSKey(HAPEvent * event){
-    auto info = event->arg<hap_crypto_setup>();
-    auto verifier = static_cast<SRPVerifier *>(info->handle);
+void _srpProof_substep2_genSKey(void * handle, int ret){
+    auto store = static_cast<_srp_genSKey_substep_info*>(handle);
+    auto info = store->info;
+    auto verifier = store->verifier;
 
-    auto A = _mpiNew();
-    auto B = _mpiNew();
-    auto v = _mpiNew();
-    mbedtls_mpi_read_binary(A, info->A, info->ALen);
-    mbedtls_mpi_read_binary(B, info->B, info->BLen);
-    mbedtls_mpi_read_binary(v, info->verifier, info->verifierLen);
-
-    //u = SHA1(PAD(A) | PAD(B))
-    auto uCtx = _sha512InitStart();
-    _sha512UpdatePad(uCtx, verifier->ng, A);
-    _sha512UpdatePad(uCtx, verifier->ng, B);
-    auto u = _sha512FinalMpi(uCtx);
-
-    auto tmp1 = _mpiNew();
-    auto tmp2 = _mpiNew();
-
-    //Calculate S(premaster secret) = (A * v^u) ^ b % N
-
-    //tmp1 = v ^ u % N
-    mbedtls_mpi_exp_mod(tmp1, v, u, verifier->ng->N, csrp_speed_RR());
-
-    _mpiFree(u);
-    _mpiFree(v);
-
-    //tmp2 = tmp1 * A % N
-    mbedtls_mpi_mul_mpi(tmp2, A, tmp1);
-    mbedtls_mpi_mod_mpi(tmp2, tmp2, verifier->ng->N);
-
-    _mpiFree(A);
-    _mpiFree(B);
-    _mpiFree(tmp1);
-
-    auto b = _mpiNew();
-    auto S = _mpiNew();
-    mbedtls_mpi_read_binary(b, info->b, info->bLen);
-
-    //S = tmp2 ^ b % N
-    mbedtls_mpi_exp_mod(S, tmp2, b, verifier->ng->N, csrp_speed_RR());
-
-    _mpiFree(tmp2);
-    _mpiFree(b);
+    _mpiFree(store->tmp2);
+    _mpiFree(store->b);
 
     //Calculate K(session key)
 
     auto Kctx = _sha512InitStart();
-    _sha512Update(Kctx, S);
-    _mpiFree(S);
+    _sha512Update(Kctx, store->S);
+    _mpiFree(store->S);
     auto sessionKey = _sha512FinalFree(Kctx);
 
     //Export session key
@@ -400,6 +369,80 @@ void _srpProof_onVerifierCreate_thenGenSKey(HAPEvent * event){
 
     //Next: M
     info->server->emit(HAPEvent::HAPCRYPTO_SRP_PROOF_SKEY_GENERATED, info);
+    delete store;
+}
+
+void _srpProof_substep1_genSKey(void * handle, int ret){
+    auto store = static_cast<_srp_genSKey_substep_info*>(handle);
+    auto info = store->info;
+    auto verifier = store->verifier;
+
+    auto A = _mpiNew(info->A, info->ALen);
+
+    _mpiFree(store->u);
+    _mpiFree(store->v);
+
+    //tmp2 = tmp1 * A % N
+    mbedtls_mpi_mul_mpi(store->tmp2, A, store->tmp1);
+    mbedtls_mpi_mod_mpi(store->tmp2, store->tmp2, verifier->ng->N);
+
+    _mpiFree(A);
+    _mpiFree(store->tmp1);
+
+    auto b = _mpiNew(info->b, info->bLen);
+    auto S = _mpiNew();
+
+    store->b = b;
+    store->S = S;
+
+#ifdef USE_ASYNC_MATH
+    hap_crypto_math_expmod(info->server, S, store->tmp2, b, verifier->ng->N, handle, _srpProof_substep2_genSKey);
+#else
+    //S = tmp2 ^ b % N
+    mbedtls_mpi_exp_mod(S, store->tmp2, b, verifier->ng->N, csrp_speed_RR());
+    _srpProof_substep2_genSKey(handle, 0);
+#endif
+}
+
+void _srpProof_onVerifierCreate_thenGenSKey(HAPEvent * event){
+    auto info = event->arg<hap_crypto_setup>();
+    auto verifier = static_cast<SRPVerifier *>(info->handle);
+
+    auto A = _mpiNew(info->A, info->ALen);
+    auto B = _mpiNew(info->B, info->BLen);
+    auto v = _mpiNew(info->verifier, info->verifierLen);
+
+    //u = SHA1(PAD(A) | PAD(B))
+    auto uCtx = _sha512InitStart();
+    _sha512UpdatePad(uCtx, verifier->ng, A);
+    _sha512UpdatePad(uCtx, verifier->ng, B);
+    auto u = _sha512FinalMpi(uCtx);
+
+    auto tmp1 = _mpiNew();
+    auto tmp2 = _mpiNew();
+
+    //Another yield here if using async math
+    //  release in the final step
+    auto store = new _srp_genSKey_substep_info;
+    store->tmp1 = tmp1;
+    store->tmp2 = tmp2;
+    store->verifier = verifier;
+    store->info = info;
+    store->v = v;
+    store->u = u;
+
+    _mpiFree(A);
+    _mpiFree(B);
+
+    //Calculate S(premaster secret) = (A * v^u) ^ b % N
+
+    //tmp1 = v ^ u % N
+#ifdef USE_ASYNC_MATH
+    hap_crypto_math_expmod(info->server, tmp1, v, u, verifier->ng->N, store, _srpProof_substep1_genSKey);
+#else
+    mbedtls_mpi_exp_mod(tmp1, v, u, verifier->ng->N, csrp_speed_RR());
+    _srpProof_substep1_genSKey(store, 0);
+#endif
 }
 
 void _srpProof_onSKey_thenM(HAPEvent * event){
