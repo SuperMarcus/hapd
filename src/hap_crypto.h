@@ -132,4 +132,19 @@ bool hap_crypto_data_decrypt_did_succeed(hap_crypto_info *);
  */
 void hap_crypto_derive_key(uint8_t * dst, const uint8_t * input, const char * salt, const char * info);
 
+/**
+ * Synchronized function, since its mild speed
+ *
+ * Generates ed25519 keypair and store it to the given buffer
+ */
+void hap_crypto_generate_keypair(uint8_t * publicKey, uint8_t * privateKey);
+
+/**
+ * Derive uuid 4 with the first 16 bytes of the sha512 hash
+ * of input data.
+ *
+ * @return The allocated and formatted uuid4 char array
+ */
+char * hap_crypto_derive_uuid(const char *);
+
 #endif //ARDUINOHOMEKIT_HAP_CRYPTO_H

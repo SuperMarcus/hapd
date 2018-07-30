@@ -3,6 +3,7 @@
 class HAPServer;
 class HAPUserHelper;
 class HAPPairingsManager;
+class HAPPersistingStorage;
 struct HAPEvent;
 struct HAPEventListener;
 
@@ -75,6 +76,12 @@ public:
         HAP_SD_NEEDED_UPDATE,
 
         /**
+         * Tells HAPServer to generate new AccessoryLTPK and AccessoryLTSK,
+         * and persistently stores them. This is very dangerous to use.
+         */
+        HAP_INITIALIZE_KEYPAIR,
+
+        /**
          * The followings are cryptography yields. Nothing besides
          * HAPPairingsManager and crypto impl should listen to
          * those events.
@@ -133,6 +140,7 @@ public:
     ~HAPServer();
     void begin(uint16_t port = 5001);
     void handle();
+    void setPairingIdentifier(const char * uuid);
 
     //node-like event system but non-blocking so no wdt triggers :D
     HAPEventListener * on(HAPEvent::EventID, HAPEventListener::Callback);
@@ -150,6 +158,7 @@ private:
     void _onSetupInitComplete(HAPEvent *);
     void _onSetupProofComplete(HAPEvent *);
     void _onDataDecrypted(HAPEvent *);
+    void _onInitKeypairReq(HAPEvent *);
 
     void _updateSDRecords(HAPEvent *);
 
@@ -157,6 +166,7 @@ private:
     HAPEvent * eventQueue = nullptr;
     HAPEventListener * eventListeners = nullptr;
     HAPPairingsManager * pairingsManager = nullptr;
+    HAPPersistingStorage * storage = nullptr;
 
 private:
     friend class HAPPairingsManager;
@@ -166,6 +176,9 @@ private:
     const char * deviceId = "F6:A4:35:E3:0A:E2";
     const char * modelName = "HomeKitDevice1,1";
     const char * setupCode = "816-32-958";
+
+    //If set to nullptr, will generate based on deviceId
+    const char * pairingUUID = nullptr;
 };
 
 struct hap_pair_info{

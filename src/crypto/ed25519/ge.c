@@ -4,7 +4,6 @@
 #include "ge.h"
 #include "precomp_data.h"
 
-
 /*
 r = p + q
 */

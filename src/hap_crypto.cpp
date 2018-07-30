@@ -2,7 +2,9 @@
 // Created by Xule Zhou on 7/17/18.
 //
 
+#include "common.h"
 #include "hap_crypto.h"
+#include "HomeKitAccessory.h"
 #include "crypto/ctr_drbg.h"
 #include "crypto/bignum.h"
 #include "crypto/sha512.h"
@@ -10,7 +12,8 @@
 #include "crypto/chachapoly.h"
 #include "crypto/md.h"
 #include "crypto/hkdf.h"
-#include "HomeKitAccessory.h"
+#include "crypto/ed25519/ge.h"
+#include "crypto/ed25519/ed25519.h"
 #include "async_math.h"
 
 #include <cstring>
@@ -596,6 +599,53 @@ void hap_crypto_derive_key(uint8_t * dst, const uint8_t * input, const char * sa
             reinterpret_cast<const unsigned char *>(info), infoLen,
             dst, HAPCRYPTO_CHACHA_KEYSIZE
     );
+}
+
+char *hap_crypto_derive_uuid(const char * seed) {
+    //uuid4 is 36 characters ending with \x00
+    auto formatted = new char[37]();
+
+    auto ctx = _sha512InitStart();
+    mbedtls_sha512_update_ret(ctx, reinterpret_cast<const unsigned char *>(seed), strlen(seed));
+    auto ret = _sha512FinalFree(ctx);
+
+    //Set uuid4
+    ret[6] &= 0x0f;
+    ret[6] |= 0x4f;
+
+    sprintf(formatted,
+            "%02hhX%02hhX%02hhX%02hhX-%02hhX%02hhX-%02hhX%02hhX-%02hhX%02hhX-%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX",
+            ret[0], ret[1], ret[2], ret[3], ret[4], ret[5], ret[6], ret[7], ret[8],
+            ret[9], ret[10], ret[11], ret[12], ret[13], ret[14], ret[15]);
+
+    delete[] ret;
+    return formatted;
+}
+
+void hap_crypto_generate_keypair(uint8_t *publicKey, uint8_t *privateKey) {
+    ge_p3 A;
+
+    //Here again we are using csrp's random ctx
+    csrp_init_random();
+
+    //Generates 64 bytes random seed
+    auto seed = new uint8_t[64];
+    mbedtls_ctr_drbg_random(csrp_ctr_drbg_ctx(), seed, 64);
+
+    auto ctx = _sha512InitStart();
+    mbedtls_sha512_update_ret(ctx, seed, 64);
+    auto ret = _sha512FinalFree(ctx);
+
+    delete[] seed;
+    memcpy(privateKey, ret, 32);
+    delete[] ret;
+
+    privateKey[0] &= 248;
+    privateKey[31] &= 63;
+    privateKey[31] |= 64;
+
+    ge_scalarmult_base(&A, privateKey);
+    ge_p3_tobytes(publicKey, &A);
 }
 
 hap_crypto_setup::hap_crypto_setup(HAPServer *server, const char * user, const char * pass):

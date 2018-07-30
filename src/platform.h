@@ -20,13 +20,22 @@
 
 #endif
 
-//Unknown platform
+//Unknown platform, assume we are building on a POSIX-compliant platform
 #ifndef DETERMINED_PLATFORM
+
+//Use system printf for HAP_DEBUG
 #define USE_PRINTF
+
+//Use BSD style socket for network
 #define USE_HAP_NATIVE_SOCKET
+
+//Use fs to store persistent information
+#define USE_ANSIC_FD_PERSISTENT
+
+//Disable pgmspace
 #define NATIVE_STRINGS
 
-//for compatibility
+//for pgmspace compatibility
 #define PROGMEM
 #define PSTR(s) s
 #define F(s) s

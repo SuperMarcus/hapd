@@ -1,6 +1,7 @@
 #include "HomeKitAccessory.h"
 #include "network.h"
 #include "hap_crypto.h"
+#include "HAPPersistingStorage.h"
 
 #include <cstring>
 
@@ -10,9 +11,6 @@ void HAPServer::begin(uint16_t port) {
     _clearEventListeners();
     _clearEventQueue();
 
-    delete pairingsManager;
-    pairingsManager = new HAPPairingsManager(this);
-
     //Register all events handled internally by HAPServer
     _onSelf(HAPEvent::HAP_SD_NEEDED_UPDATE, &HAPServer::_updateSDRecords);
     _onSelf(HAPEvent::HAP_NET_RECEIVE_REQUEST, &HAPServer::_onRequestReceived);
@@ -20,10 +18,23 @@ void HAPServer::begin(uint16_t port) {
     _onSelf(HAPEvent::HAP_NET_DISCONNECT, &HAPServer::_onDisconnect);
 
     _onSelf(HAPEvent::HAPCRYPTO_DECRYPTED, &HAPServer::_onDataDecrypted);
+    _onSelf(HAPEvent::HAP_INITIALIZE_KEYPAIR, &HAPServer::_onInitKeypairReq);
 
     //For HAPPairingsManager
     _onSelf(HAPEvent::HAPCRYPTO_SRP_INIT_COMPLETE, &HAPServer::_onSetupInitComplete);
     _onSelf(HAPEvent::HAPCRYPTO_SRP_PROOF_COMPLETE, &HAPServer::_onSetupProofComplete);
+
+    //Derive uuid from device id if not exists
+    if(pairingUUID == nullptr){
+        pairingUUID = hap_crypto_derive_uuid(deviceId);
+        HAP_DEBUG("Pairing UUID not set, derived from device id: %s", pairingUUID);
+    }
+
+    delete pairingsManager;
+    pairingsManager = new HAPPairingsManager(this);
+
+    delete storage;
+    storage = new HAPPersistingStorage();
 
     server_conn = new hap_network_connection;
     server_conn->raw = nullptr;
@@ -170,7 +181,9 @@ void HAPServer::_updateSDRecords(HAPEvent *) {
 
 HAPServer::~HAPServer() {
     hap_service_discovery_deinit(mdns_handle);
+
     mdns_handle = nullptr;
+    delete[] pairingUUID;
 }
 
 void HAPServer::_onConnect(HAPEvent * event) {
@@ -192,7 +205,7 @@ void HAPServer::_onSetupProofComplete(HAPEvent * event) {
     pairingsManager->onPairSetupM4Finish(event->arg<hap_crypto_setup>());
 }
 
-void HAPServer::_onDataDecrypted(HAPEvent * event) {
+void HAPServer:: _onDataDecrypted(HAPEvent * event) {
     auto info = event->arg<hap_crypto_info>();
     auto pairInfo = info->session->pairInfo();
 
@@ -200,4 +213,22 @@ void HAPServer::_onDataDecrypted(HAPEvent * event) {
     if(pairInfo->isPairing){
         pairingsManager->onPairingDeviceDecryption(pairInfo, info->session);
     }
+}
+
+void HAPServer::setPairingIdentifier(const char *uuid) {
+    delete pairingUUID;
+    auto newUuid = new char[strlen(uuid) + 1]();
+    strcpy(newUuid, uuid);
+    pairingUUID = newUuid;
+}
+
+void HAPServer::_onInitKeypairReq(HAPEvent *) {
+    uint8_t pubKey[32], secKey[32];
+    hap_crypto_generate_keypair(pubKey, secKey);
+    storage->setAccessoryLongTermKeys(pubKey, secKey);
+
+    HAP_DEBUG("New LTPK");
+    hexdump(pubKey, 32);
+    HAP_DEBUG("New LTSK");
+    hexdump(secKey, 32);
 }

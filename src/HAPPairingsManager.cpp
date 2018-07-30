@@ -108,6 +108,7 @@ void HAPPairingsManager::onPairSetup(HAPUserHelper * request) {
 
                 pairInfo->currentStep = 6;
                 //TODO: release this thing
+                //If decryption failed, release in HAPPairingsManager::onPairingDeviceDecryption
                 request->retain();
                 hap_crypto_data_decrypt(pairInfo->infoStore);
             }
@@ -165,6 +166,7 @@ void HAPPairingsManager::onPairingDeviceDecryption(hap_pair_info * info, HAPUser
         auto resTlv = tlv8_insert(nullptr, kTLVType_Error, 1, &errAuth);
         request->setResponseStatus(400);
         request->send(resTlv);
+        request->release();
     }
 }
 
