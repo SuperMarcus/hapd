@@ -58,7 +58,7 @@ bool hap_persistence_read(void * _, unsigned int address, uint8_t *buffer, unsig
     return true;
 }
 
-bool hap_persistence_write(void * _, unsigned int address, uint8_t *buffer, unsigned int length){
+bool hap_persistence_write(void * _, unsigned int address, const uint8_t *buffer, unsigned int length){
     auto handle = static_cast<hap_posix_fd*>(_);
 
     auto ret = fseek(handle->fd, handle->startOffset + address, SEEK_SET);

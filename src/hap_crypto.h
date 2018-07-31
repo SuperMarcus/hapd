@@ -48,6 +48,7 @@ struct hap_crypto_setup {
     const uint8_t * clientProof = nullptr;
     const uint8_t * serverProof = nullptr;
     const uint8_t * deviceLtpk = nullptr;
+    const uint8_t * deviceId = nullptr;
 
     unsigned int verifierLen = 0;
     uint16_t bLen = 0;

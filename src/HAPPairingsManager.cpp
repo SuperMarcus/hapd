@@ -177,14 +177,18 @@ void HAPPairingsManager::onPairingDeviceDecryption(hap_pair_info * info, HAPUser
         auto chain = tlv8_parse(info->infoStore->rawData, info->infoStore->dataLen);
         auto deviceLtpk = new uint8_t[32];
         auto signature = new uint8_t[64];
+        auto deviceId = new uint8_t[36];
         info->setupStore->deviceLtpk = deviceLtpk;
+        info->setupStore->deviceId = deviceId;
+
         tlv8_read(tlv8_find(chain, kTLVType_PublicKey), deviceLtpk, 32);
         tlv8_read(tlv8_find(chain, kTLVType_Signature), signature, 64);
+        tlv8_read(tlv8_find(chain, kTLVType_Identifier), deviceId, 36);
 
         //iOSDeviceInfo = iOSDeviceX, iOSDevicePairingID, iOSDeviceLTPK
         auto iOSDeviceInfo = new uint8_t[IOS_DEVICE_X_LEN];
         hap_crypto_derive_key(iOSDeviceInfo, info->setupStore->sessionKey, hkdfSalt, hkdfInfo);
-        tlv8_read(tlv8_find(chain, kTLVType_Identifier), iOSDeviceInfo + 32, 36);
+        memcpy(iOSDeviceInfo + 32, deviceId, 36);
         memcpy(iOSDeviceInfo + 32 + 36, deviceLtpk, 32);
 
         tlv8_free(chain);
@@ -254,6 +258,7 @@ void HAPPairingsManager::onDevicePaired(hap_pair_info * info, HAPUserHelper * re
 void HAPPairingsManager::onPairingDeviceEncryption(hap_pair_info * info, HAPUserHelper * request) {
     if(info->currentStep != 6) return;
     auto crypto = info->infoStore;
+    auto setupData = info->setupStore;
     uint8_t M6 = 6;
 
     auto response = tlv8_insert(
@@ -263,6 +268,9 @@ void HAPPairingsManager::onPairingDeviceEncryption(hap_pair_info * info, HAPUser
             crypto->encryptedData
     );
     response = tlv8_insert(response, kTLVType_State, 1, &M6);
+
+    //Persistently stores the device as a paired device
+    server->storage->addPairedDevice(setupData->deviceId, setupData->deviceLtpk);
 
     request->send(response);
     request->release();

@@ -28,7 +28,7 @@ extern "C" {
  * 0x25       | ---
  *  > 32bytes | AccessoryLTSK: ed25519 private key
  * 0x45       | ---
- *  > 2bytes  | Number of objects in dynamic section
+ *  > 2bytes  | Number of objects in dynamic section in big endian
  * 0x47       | ---
  *  -----------------------------
  * |  Dynamic Block (One Block)  |
@@ -42,7 +42,8 @@ extern "C" {
  * 0x48       | ---
  */
 
-#define HAP_FIXED_BLOCK_SIZE    0x48
+#define HAP_FIXED_BLOCK_SIZE    0x47
+#define HAP_DYNAM_BLOCK_SIZE    0x48
 #define HAP_STORAGE_FMT_VERSION 0x01
 
 /**
@@ -70,7 +71,7 @@ bool hap_persistence_read(void *, unsigned int address, uint8_t *buffer, unsigne
  * @param length Length of data to write
  * @return true if succeed
  */
-bool hap_persistence_write(void *, unsigned int address, uint8_t *buffer, unsigned int length);
+bool hap_persistence_write(void *, unsigned int address, const uint8_t *buffer, unsigned int length);
 
 /**
  * Allocate and format the fixed section to zeros,

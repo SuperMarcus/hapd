@@ -14,11 +14,24 @@ struct PersistFlags {
     /**
      * This byte stores information about cryptography keys
      *
-     * 0b00000001 = ed25519 keys generated
+     * For fixed blocks:
+     * > 0b00000001 = ed25519 keys generated
+     *
+     * For dynamic blocks:
+     * > todo...
      */
     uint8_t cryptography;
 
     uint8_t b, c, d;
+};
+
+/**
+ * Dynamic block for paired devices
+ */
+struct PairedDevice {
+    uint8_t identifier[36];
+    uint8_t publicKey[32];
+    PersistFlags flags;
 };
 
 /**
@@ -43,7 +56,7 @@ public:
      * @param publicKey 32 bytes AccessoryLTPK
      * @param privateKey 32 bytes AccessoryLTSK
      */
-    void setAccessoryLongTermKeys(uint8_t * publicKey, uint8_t * privateKey);
+    void setAccessoryLongTermKeys(const uint8_t * publicKey, const uint8_t * privateKey);
 
     /**
      * Read saved AccessoryLTPK and Accessory LTSK
@@ -61,9 +74,35 @@ public:
     void getAccessoryLTPK(uint8_t * publicKey);
 
     /**
+     * Store the paired device persistently
+     *
+     * @param identifier 36 bytes device pairing identifier
+     * @param publicKey 32 bytes device public key
+     * @param flags additional flags for permissions and others
+     */
+    void addPairedDevice(const uint8_t * identifier, const uint8_t * publicKey, const PersistFlags * flags = nullptr);
+
+    /**
+     * Retrieve the stored device pairing data
+     *
+     * @param identifier 36 bytes device identifier
+     */
+    PairedDevice * retrievePairedDevice(const uint8_t * identifier);
+
+    /**
      * Remove and wipe all the data from persist storage
      */
     void format();
+
+    /**
+     * @return Number of paired devices
+     */
+    unsigned int pairedDevicesCount();
+
+    /**
+     * Set the number of paired devices
+     */
+    void setPairedDeviceCount(unsigned int);
 
 private:
     void * handle;
