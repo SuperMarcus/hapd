@@ -82,6 +82,11 @@ public:
         HAP_INITIALIZE_KEYPAIR,
 
         /**
+         * Called when a new device is being paired with this accessory.
+         */
+        HAP_DEVICE_PAIR,
+
+        /**
          * The followings are cryptography yields. Nothing besides
          * HAPPairingsManager and crypto impl should listen to
          * those events.
@@ -158,7 +163,9 @@ private:
     void _onSetupInitComplete(HAPEvent *);
     void _onSetupProofComplete(HAPEvent *);
     void _onDataDecrypted(HAPEvent *);
+    void _onDataEncrypted(HAPEvent *);
     void _onInitKeypairReq(HAPEvent *);
+    void _onDevicePair(HAPEvent *);
 
     void _updateSDRecords(HAPEvent *);
 
@@ -214,6 +221,8 @@ private:
     void onPairSetupM4Finish(hap_crypto_setup *);
 
     void onPairingDeviceDecryption(hap_pair_info *, HAPUserHelper *);
+    void onPairingDeviceEncryption(hap_pair_info *, HAPUserHelper *);
+    void onDevicePaired(hap_pair_info *, HAPUserHelper *);
 
     HAPServer * server;
 };

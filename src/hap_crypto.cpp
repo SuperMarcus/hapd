@@ -535,7 +535,7 @@ void _chachaPoly_decrypt(HAPEvent * event){
 
     auto ctx = new mbedtls_chachapoly_context;
     mbedtls_chachapoly_init(ctx);
-    mbedtls_chachapoly_setkey(ctx, info->decryptKey);
+    mbedtls_chachapoly_setkey(ctx, info->key);
     auto ret = mbedtls_chachapoly_auth_decrypt(
             ctx, info->dataLen, nonce, info->aad, info->aadLen,
             info->authTag, info->encryptedData, info->rawData
@@ -552,6 +552,36 @@ void _chachaPoly_decrypt(HAPEvent * event){
     info->server->emit(HAPEvent::HAPCRYPTO_DECRYPTED, info);
 }
 
+void _chachaPoly_encrypt(HAPEvent * event){
+    auto info = event->arg<hap_crypto_info>();
+
+    unsigned char nonce[12];
+    memset(nonce, 0, sizeof(nonce));
+    memcpy(nonce + 12 - info->nonceLen, info->nonce, info->nonceLen);
+
+    delete[] info->encryptedData;
+    //Allocate buffer with 16 bytes tag
+    info->encryptedData = new uint8_t[info->dataLen + 16];
+    info->authTag = info->encryptedData + info->dataLen;
+
+    auto ctx = new mbedtls_chachapoly_context;
+    mbedtls_chachapoly_init(ctx);
+    mbedtls_chachapoly_setkey(ctx, info->key);
+    auto ret = mbedtls_chachapoly_encrypt_and_tag(
+            ctx, info->dataLen, nonce, info->aad, info->aadLen,
+            info->rawData, info->encryptedData, info->authTag
+    );
+    mbedtls_chachapoly_free(ctx);
+    delete ctx;
+
+    if(ret == 0){
+        delete[] info->rawData;
+        info->rawData = nullptr;
+    }
+
+    info->server->emit(HAPEvent::HAPCRYPTO_ENCRYPTED, info);
+}
+
 void hap_crypto_init(HAPServer * server) {
     //M1
     server->on(HAPEvent::HAPCRYPTO_SRP_INIT_FINISH_GEN_SALT, _srpInit_onGenSalt_thenGenPub);
@@ -562,6 +592,7 @@ void hap_crypto_init(HAPServer * server) {
 
     //Chachapoly decrypt
     server->on(HAPEvent::HAPCRYPTO_NEED_DECRYPT, _chachaPoly_decrypt);
+    server->on(HAPEvent::HAPCRYPTO_NEED_ENCRYPT, _chachaPoly_encrypt);
 
 #ifdef USE_ASYNC_MATH
     //Init async math handlers
@@ -582,6 +613,10 @@ bool hap_crypto_verify_client_proof(hap_crypto_setup * info) {
 
 void hap_crypto_data_decrypt(hap_crypto_info * info) {
     info->server->emit(HAPEvent::HAPCRYPTO_NEED_DECRYPT, info);
+}
+
+void hap_crypto_data_encrypt(hap_crypto_info * info) {
+    info->server->emit(HAPEvent::HAPCRYPTO_NEED_ENCRYPT, info);
 }
 
 bool hap_crypto_data_decrypt_did_succeed(hap_crypto_info * info) {
@@ -648,6 +683,16 @@ void hap_crypto_generate_keypair(uint8_t *publicKey, uint8_t *privateKey) {
     ge_p3_tobytes(publicKey, &A);
 }
 
+bool hap_crypto_verify(uint8_t *signature, uint8_t *message, unsigned int len, uint8_t *pubKey) {
+    return ed25519_verify(signature, message, len, pubKey) != 0;
+}
+
+uint8_t *hap_crypto_sign(uint8_t *message, unsigned int len, uint8_t * pubKey, uint8_t *secKey) {
+    auto buf = new uint8_t[64];
+    ed25519_sign(buf, message, len, pubKey, secKey);
+    return buf;
+}
+
 hap_crypto_setup::hap_crypto_setup(HAPServer *server, const char * user, const char * pass):
         server(server), username(user), password(pass) { }
 
@@ -661,16 +706,17 @@ hap_crypto_setup::~hap_crypto_setup() {
     //Not deleting session key since its referenced from verifier
     delete[] clientProof;
     //Not deleting server proof since its also ref from ver
+    delete[] deviceLtpk;
 }
 
 hap_crypto_info::hap_crypto_info(HAPServer * server, HAPUserHelper * session):
     server(server), session(session){ }
 
 hap_crypto_info::~hap_crypto_info() {
-    free();
+    reset();
 }
 
-void hap_crypto_info::free() {
+void hap_crypto_info::reset() {
     dataLen = 0;
     delete[] encryptedData;
     delete[] rawData;
@@ -679,7 +725,4 @@ void hap_crypto_info::free() {
     encryptedData = nullptr;
     rawData = nullptr;
     authTag = nullptr;
-
-    memset(encryptKey, 0, sizeof(encryptKey));
-    memset(decryptKey, 0, sizeof(decryptKey));
 }

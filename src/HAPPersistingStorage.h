@@ -54,6 +54,13 @@ public:
     void getAccessoryLongTermKeys(uint8_t * publicKey, uint8_t * privateKey);
 
     /**
+     * Read saved AccessoryLTPK
+     *
+     * @param publicKey 32 bytes allocated buffer
+     */
+    void getAccessoryLTPK(uint8_t * publicKey);
+
+    /**
      * Remove and wipe all the data from persist storage
      */
     void format();

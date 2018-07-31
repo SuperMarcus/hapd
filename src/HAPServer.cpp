@@ -18,11 +18,13 @@ void HAPServer::begin(uint16_t port) {
     _onSelf(HAPEvent::HAP_NET_DISCONNECT, &HAPServer::_onDisconnect);
 
     _onSelf(HAPEvent::HAPCRYPTO_DECRYPTED, &HAPServer::_onDataDecrypted);
+    _onSelf(HAPEvent::HAPCRYPTO_ENCRYPTED, &HAPServer::_onDataEncrypted);
     _onSelf(HAPEvent::HAP_INITIALIZE_KEYPAIR, &HAPServer::_onInitKeypairReq);
 
     //For HAPPairingsManager
     _onSelf(HAPEvent::HAPCRYPTO_SRP_INIT_COMPLETE, &HAPServer::_onSetupInitComplete);
     _onSelf(HAPEvent::HAPCRYPTO_SRP_PROOF_COMPLETE, &HAPServer::_onSetupProofComplete);
+    _onSelf(HAPEvent::HAP_DEVICE_PAIR, &HAPServer::_onDevicePair);
 
     //Derive uuid from device id if not exists
     if(pairingUUID == nullptr){
@@ -30,11 +32,11 @@ void HAPServer::begin(uint16_t port) {
         HAP_DEBUG("Pairing UUID not set, derived from device id: %s", pairingUUID);
     }
 
-    delete pairingsManager;
-    pairingsManager = new HAPPairingsManager(this);
-
     delete storage;
     storage = new HAPPersistingStorage();
+
+    delete pairingsManager;
+    pairingsManager = new HAPPairingsManager(this);
 
     server_conn = new hap_network_connection;
     server_conn->raw = nullptr;
@@ -215,6 +217,22 @@ void HAPServer:: _onDataDecrypted(HAPEvent * event) {
     }
 }
 
+void HAPServer::_onDataEncrypted(HAPEvent * event) {
+    auto info = event->arg<hap_crypto_info>();
+    auto pairInfo = info->session->pairInfo();
+
+    if(pairInfo->isPairing){
+        pairingsManager->onPairingDeviceEncryption(pairInfo, info->session);
+    }
+}
+
+void HAPServer::_onDevicePair(HAPEvent * event) {
+    auto info = event->arg<hap_pair_info>();
+    if(info->isPairing){
+        pairingsManager->onDevicePaired(info, info->setupStore->session);
+    }
+}
+
 void HAPServer::setPairingIdentifier(const char *uuid) {
     delete pairingUUID;
     auto newUuid = new char[strlen(uuid) + 1]();
@@ -227,8 +245,7 @@ void HAPServer::_onInitKeypairReq(HAPEvent *) {
     hap_crypto_generate_keypair(pubKey, secKey);
     storage->setAccessoryLongTermKeys(pubKey, secKey);
 
-    HAP_DEBUG("New LTPK");
+    HAP_DEBUG("New keypair generated.");
     hexdump(pubKey, 32);
-    HAP_DEBUG("New LTSK");
     hexdump(secKey, 32);
 }

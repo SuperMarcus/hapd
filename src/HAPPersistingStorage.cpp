@@ -40,6 +40,8 @@ HAPPersistingStorage::~HAPPersistingStorage() {
 }
 
 void HAPPersistingStorage::format() {
+    HAP_DEBUG("Formatting persist storage...");
+
     hap_persistence_format(handle);
 
     //Write version number
@@ -70,4 +72,8 @@ void HAPPersistingStorage::writeFlags() {
 void HAPPersistingStorage::getAccessoryLongTermKeys(uint8_t *publicKey, uint8_t *privateKey) {
     hap_persistence_read(handle, FIXED_LTPK_ADDR, publicKey, FIXED_LTPK_LEN);
     hap_persistence_read(handle, FIXED_LTSK_ADDR, privateKey, FIXED_LTSK_LEN);
+}
+
+void HAPPersistingStorage::getAccessoryLTPK(uint8_t *publicKey) {
+    hap_persistence_read(handle, FIXED_LTPK_ADDR, publicKey, FIXED_LTPK_LEN);
 }

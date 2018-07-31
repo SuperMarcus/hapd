@@ -73,6 +73,8 @@ bool hap_persistence_write(void * _, unsigned int address, uint8_t *buffer, unsi
         return false;
     }
 
+    fflush(handle->fd);
+
     return true;
 }
 

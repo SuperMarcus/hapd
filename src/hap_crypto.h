@@ -26,14 +26,13 @@ struct hap_crypto_info {
     const uint8_t * nonce = nullptr;
     const uint8_t * aad = nullptr;
 
-    uint8_t decryptKey[HAPCRYPTO_CHACHA_KEYSIZE];
-    uint8_t encryptKey[HAPCRYPTO_CHACHA_KEYSIZE];
+    uint8_t key[HAPCRYPTO_CHACHA_KEYSIZE];
 
     unsigned int dataLen = 0;
     unsigned int nonceLen = 0;
     unsigned int aadLen = 0;
 
-    void free();
+    void reset();
 
     hap_crypto_info(HAPServer *, HAPUserHelper *);
     ~hap_crypto_info();
@@ -48,6 +47,7 @@ struct hap_crypto_setup {
     const uint8_t * sessionKey = nullptr;
     const uint8_t * clientProof = nullptr;
     const uint8_t * serverProof = nullptr;
+    const uint8_t * deviceLtpk = nullptr;
 
     unsigned int verifierLen = 0;
     uint16_t bLen = 0;
@@ -109,9 +109,28 @@ void hap_crypto_srp_free(hap_crypto_setup *);
 /**
  * Async function
  *
- * Decrypt the data and emits
+ * Chacha20-Poly1305 decrypt and verify
+ *
+ * Decrypt data in encryptedData buffer, allocate rawData buffer
+ * and free the encryptedData. Nonce is automatically left padded
+ * with \x00. When finishes, emits HAPCRYPTO_DECRYPTED
+ *
+ * If decryption fails or verification fails, encryptedData is not
+ * freed. Use hap_crypto_data_decrypt_did_succeed() to check if
+ * data is authenticated.
  */
 void hap_crypto_data_decrypt(hap_crypto_info *);
+
+/**
+ * Async function
+ *
+ * Chacha20-Poly1305 encrypt and tag
+ *
+ * Encrypt raw data, allocate encryptedData buffer and authTag,
+ * and free the rawData buffer. When finishes, emit
+ * HAPCRYPTO_ENCRYPTED
+ */
+void hap_crypto_data_encrypt(hap_crypto_info *);
 
 /**
  * Synchronized function
@@ -133,6 +152,27 @@ bool hap_crypto_data_decrypt_did_succeed(hap_crypto_info *);
 void hap_crypto_derive_key(uint8_t * dst, const uint8_t * input, const char * salt, const char * info);
 
 /**
+ * Verify ed25519 signature
+ *
+ * @param signature 64 bytes signature
+ * @param message Message to be verified
+ * @param len Length of message
+ * @param pubKey Public key
+ * @return
+ */
+bool hap_crypto_verify(uint8_t * signature, uint8_t * message, unsigned int len, uint8_t * pubKey);
+
+/**
+ * Sign the message with ed25519
+ *
+ * @param message Message to be signed
+ * @param len Length of message
+ * @param secKey ed25519 secret key
+ * @return
+ */
+uint8_t * hap_crypto_sign(uint8_t * message, unsigned int len, uint8_t * pubKey, uint8_t * secKey);
+
+/**
  * Synchronized function, since its mild speed
  *
  * Generates ed25519 keypair and store it to the given buffer
@@ -140,6 +180,8 @@ void hap_crypto_derive_key(uint8_t * dst, const uint8_t * input, const char * sa
 void hap_crypto_generate_keypair(uint8_t * publicKey, uint8_t * privateKey);
 
 /**
+ * Synchronized function
+ *
  * Derive uuid 4 with the first 16 bytes of the sha512 hash
  * of input data.
  *

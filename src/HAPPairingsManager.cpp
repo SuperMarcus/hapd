@@ -1,13 +1,23 @@
 #include "HomeKitAccessory.h"
+#include "HAPPersistingStorage.h"
 #include "network.h"
 #include "tlv.h"
 #include "hap_crypto.h"
 
 #include <cstring>
 
+#define IOS_DEVICE_X_LEN    100
+#define ACCESSORY_X_LEN     81
+#define DEVICE_ID_LEN       17
+
 HAPPairingsManager::HAPPairingsManager(HAPServer * server): server(server) {
     //Add crypto callbacks to server
     hap_crypto_init(server);
+
+    //If no accessory keypair, then init one
+    if(!server->storage->haveAccessoryLongTermKeys()){
+        server->emit(HAPEvent::HAP_INITIALIZE_KEYPAIR);
+    }
 }
 
 void HAPPairingsManager::onPairSetup(HAPUserHelper * request) {
@@ -103,11 +113,11 @@ void HAPPairingsManager::onPairSetup(HAPUserHelper * request) {
                 store->aad = nullptr;
                 store->aadLen = 0;
 
-                hap_crypto_derive_key(const_cast<uint8_t *>(store->decryptKey),
+                hap_crypto_derive_key(const_cast<uint8_t *>(store->key),
                                       setupStore->sessionKey, hkdfSalt, hkdfInfo);
 
                 pairInfo->currentStep = 6;
-                //TODO: release this thing
+                //If succeed, release in HAPPairingsManager::onPairingDeviceEncryption
                 //If decryption failed, release in HAPPairingsManager::onPairingDeviceDecryption
                 request->retain();
                 hap_crypto_data_decrypt(pairInfo->infoStore);
@@ -160,14 +170,102 @@ void HAPPairingsManager::onPairingDeviceDecryption(hap_pair_info * info, HAPUser
     if(info->currentStep != 6) return;
 
     if(hap_crypto_data_decrypt_did_succeed(info->infoStore)){
-        HAP_DEBUG("UNImplemented");
-    }else{
-        uint8_t errAuth = kTLVError_Authentication;
-        auto resTlv = tlv8_insert(nullptr, kTLVType_Error, 1, &errAuth);
-        request->setResponseStatus(400);
-        request->send(resTlv);
-        request->release();
+        //Derive iOSDeviceX
+        const constexpr static char hkdfSalt[] = "Pair-Setup-Controller-Sign-Salt";
+        const constexpr static char hkdfInfo[] = "Pair-Setup-Controller-Sign-Info";
+
+        auto chain = tlv8_parse(info->infoStore->rawData, info->infoStore->dataLen);
+        auto deviceLtpk = new uint8_t[32];
+        auto signature = new uint8_t[64];
+        info->setupStore->deviceLtpk = deviceLtpk;
+        tlv8_read(tlv8_find(chain, kTLVType_PublicKey), deviceLtpk, 32);
+        tlv8_read(tlv8_find(chain, kTLVType_Signature), signature, 64);
+
+        //iOSDeviceInfo = iOSDeviceX, iOSDevicePairingID, iOSDeviceLTPK
+        auto iOSDeviceInfo = new uint8_t[IOS_DEVICE_X_LEN];
+        hap_crypto_derive_key(iOSDeviceInfo, info->setupStore->sessionKey, hkdfSalt, hkdfInfo);
+        tlv8_read(tlv8_find(chain, kTLVType_Identifier), iOSDeviceInfo + 32, 36);
+        memcpy(iOSDeviceInfo + 32 + 36, deviceLtpk, 32);
+
+        tlv8_free(chain);
+
+        if(hap_crypto_verify(signature, iOSDeviceInfo, IOS_DEVICE_X_LEN, deviceLtpk)){
+            delete[] signature;
+            delete[] iOSDeviceInfo;
+            //Mark device as paired
+            info->isPaired = true;
+            server->emit(HAPEvent::HAP_DEVICE_PAIR, info);
+            return;
+        }
+
+        delete[] signature;
+        delete[] iOSDeviceInfo;
     }
+
+    uint8_t errAuth = kTLVError_Authentication;
+    auto resTlv = tlv8_insert(nullptr, kTLVType_Error, 1, &errAuth);
+    request->setResponseStatus(400);
+    request->send(resTlv);
+    request->release();
+}
+
+void HAPPairingsManager::onDevicePaired(hap_pair_info * info, HAPUserHelper * request) {
+    //Derive AccessoryX
+    const constexpr static char hkdfSalt[] = "Pair-Setup-Accessory-Sign-Salt";
+    const constexpr static char hkdfInfo[] = "Pair-Setup-Accessory-Sign-Info";
+    const constexpr static uint8_t Msg6Nonce[] = "PS-Msg06";
+    const constexpr static unsigned int Msg6NonceLen = sizeof(Msg6Nonce) - 1;
+
+    auto crypto = info->infoStore;
+    auto pubKey = new uint8_t[32];
+    auto secKey = new uint8_t[32];
+    server->storage->getAccessoryLongTermKeys(pubKey, secKey);
+
+    //AccessoryInfo = AccessoryX, AccessoryPairingID, AccessoryLTPK
+    auto AccessoryInfo = new uint8_t[ACCESSORY_X_LEN];
+    hap_crypto_derive_key(AccessoryInfo, info->setupStore->sessionKey, hkdfSalt, hkdfInfo);
+    memcpy(AccessoryInfo + 32, server->deviceId, DEVICE_ID_LEN);
+    memcpy(AccessoryInfo + 32 + DEVICE_ID_LEN, pubKey, 32);
+
+    auto signature = hap_crypto_sign(AccessoryInfo, ACCESSORY_X_LEN, pubKey, secKey);
+
+    delete[] AccessoryInfo;
+    delete[] secKey;
+
+    auto subtlv = tlv8_insert(nullptr, kTLVType_Signature, 64, signature);
+    subtlv = tlv8_insert(subtlv, kTLVType_PublicKey, 32, pubKey);
+    subtlv = tlv8_insert(subtlv, kTLVType_Identifier, DEVICE_ID_LEN, server->deviceId);
+
+    delete[] pubKey;
+
+    unsigned int subtlvLen = 0;
+    auto exportedSubtlv = tlv8_export_free(subtlv, &subtlvLen);
+
+    //Delete original data w/out deleting key
+    crypto->reset();
+    crypto->rawData = exportedSubtlv;
+    crypto->dataLen = subtlvLen;
+    crypto->nonce = Msg6Nonce;
+    crypto->nonceLen = Msg6NonceLen;
+
+    hap_crypto_data_encrypt(crypto);
+}
+
+void HAPPairingsManager::onPairingDeviceEncryption(hap_pair_info * info, HAPUserHelper * request) {
+    if(info->currentStep != 6) return;
+    auto crypto = info->infoStore;
+    uint8_t M6 = 6;
+
+    auto response = tlv8_insert(
+            nullptr,
+            kTLVType_EncryptedData,
+            crypto->dataLen + 16, //Encrypted data and authTag are allocated together
+            crypto->encryptedData
+    );
+    response = tlv8_insert(response, kTLVType_State, 1, &M6);
+
+    request->send(response);
+    request->release();
 }
 
 hap_pair_info::~hap_pair_info() {
