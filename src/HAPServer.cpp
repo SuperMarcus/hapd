@@ -26,12 +26,6 @@ void HAPServer::begin(uint16_t port) {
     _onSelf(HAPEvent::HAPCRYPTO_SRP_PROOF_COMPLETE, &HAPServer::_onSetupProofComplete);
     _onSelf(HAPEvent::HAP_DEVICE_PAIR, &HAPServer::_onDevicePair);
 
-    //Derive uuid from device id if not exists
-    if(pairingUUID == nullptr){
-        pairingUUID = hap_crypto_derive_uuid(deviceId);
-        HAP_DEBUG("Pairing UUID not set, derived from device id: %s", pairingUUID);
-    }
-
     delete storage;
     storage = new HAPPersistingStorage();
 
@@ -183,9 +177,7 @@ void HAPServer::_updateSDRecords(HAPEvent *) {
 
 HAPServer::~HAPServer() {
     hap_service_discovery_deinit(mdns_handle);
-
     mdns_handle = nullptr;
-    delete[] pairingUUID;
 }
 
 void HAPServer::_onConnect(HAPEvent * event) {
@@ -231,13 +223,6 @@ void HAPServer::_onDevicePair(HAPEvent * event) {
     if(info->isPairing){
         pairingsManager->onDevicePaired(info, info->setupStore->session);
     }
-}
-
-void HAPServer::setPairingIdentifier(const char *uuid) {
-    delete pairingUUID;
-    auto newUuid = new char[strlen(uuid) + 1]();
-    strcpy(newUuid, uuid);
-    pairingUUID = newUuid;
 }
 
 void HAPServer::_onInitKeypairReq(HAPEvent *) {

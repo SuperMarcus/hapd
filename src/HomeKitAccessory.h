@@ -183,9 +183,6 @@ private:
     const char * deviceId = "F6:A4:35:E3:0B:E2";
     const char * modelName = "HomeKitDevice1,1";
     const char * setupCode = "816-32-958";
-
-    //If set to nullptr, will generate based on deviceId
-    const char * pairingUUID = nullptr;
 };
 
 struct hap_pair_info{
