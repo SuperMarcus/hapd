@@ -222,7 +222,7 @@ void HAPPairingsManager::onDevicePaired(hap_pair_info * info, HAPUserHelper * re
 
     auto crypto = info->infoStore;
     auto pubKey = new uint8_t[32];
-    auto secKey = new uint8_t[32];
+    auto secKey = new uint8_t[64];
     server->storage->getAccessoryLongTermKeys(pubKey, secKey);
 
     //AccessoryInfo = AccessoryX, AccessoryPairingID, AccessoryLTPK

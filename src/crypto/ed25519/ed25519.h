@@ -18,6 +18,10 @@ void ed25519_key_exchange(unsigned char *shared_secret,
                           const unsigned char *public_key,
                           const unsigned char *private_key);
 
+void ed25519_create_keypair(unsigned char *public_key,
+                            unsigned char *private_key,
+                            const unsigned char *seed);
+
 #ifdef __cplusplus
 }
 #endif

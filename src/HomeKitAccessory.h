@@ -180,7 +180,7 @@ private:
 
     void * mdns_handle = nullptr;
     const char * deviceName = "HomeKit Device";
-    const char * deviceId = "F6:A4:35:E3:0B:E2";
+    const char * deviceId = "F6:A4:35:E3:0B:00";
     const char * modelName = "HomeKitDevice1,1";
     const char * setupCode = "816-32-958";
 };

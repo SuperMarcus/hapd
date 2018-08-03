@@ -26,10 +26,10 @@ extern "C" {
  * 0x05       | ---
  *  > 32bytes | AccessoryLTPK: ed25519 public key
  * 0x25       | ---
- *  > 32bytes | AccessoryLTSK: ed25519 private key
- * 0x45       | ---
+ *  > 64bytes | AccessoryLTSK: ed25519 private key
+ * 0x65       | ---
  *  > 2bytes  | Number of objects in dynamic section in big endian
- * 0x47       | ---
+ * 0x67       | ---
  *  -----------------------------
  * |  Dynamic Block (One Block)  |
  *  -----------------------------
@@ -42,7 +42,7 @@ extern "C" {
  * 0x48       | ---
  */
 
-#define HAP_FIXED_BLOCK_SIZE    0x47
+#define HAP_FIXED_BLOCK_SIZE    0x67
 #define HAP_DYNAM_BLOCK_SIZE    0x48
 #define HAP_STORAGE_FMT_VERSION 0x01
 

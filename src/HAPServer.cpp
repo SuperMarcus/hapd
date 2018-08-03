@@ -226,11 +226,11 @@ void HAPServer::_onDevicePair(HAPEvent * event) {
 }
 
 void HAPServer::_onInitKeypairReq(HAPEvent *) {
-    uint8_t pubKey[32], secKey[32];
+    uint8_t pubKey[32], secKey[64];
     hap_crypto_generate_keypair(pubKey, secKey);
     storage->setAccessoryLongTermKeys(pubKey, secKey);
 
     HAP_DEBUG("New keypair generated.");
     hexdump(pubKey, 32);
-    hexdump(secKey, 32);
+    hexdump(secKey, 64);
 }

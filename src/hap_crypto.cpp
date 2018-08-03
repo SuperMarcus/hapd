@@ -12,7 +12,6 @@
 #include "crypto/chachapoly.h"
 #include "crypto/md.h"
 #include "crypto/hkdf.h"
-#include "crypto/ed25519/ge.h"
 #include "crypto/ed25519/ed25519.h"
 #include "async_math.h"
 
@@ -658,29 +657,9 @@ char *hap_crypto_derive_uuid(const char * seed) {
 }
 
 void hap_crypto_generate_keypair(uint8_t *publicKey, uint8_t *privateKey) {
-    ge_p3 A;
-
-    //Here again we are using csrp's random ctx
-    csrp_init_random();
-
-    //Generates 64 bytes random seed
-    auto seed = new uint8_t[64];
-    mbedtls_ctr_drbg_random(csrp_ctr_drbg_ctx(), seed, 64);
-
-    auto ctx = _sha512InitStart();
-    mbedtls_sha512_update_ret(ctx, seed, 64);
-    auto ret = _sha512FinalFree(ctx);
-
-    delete[] seed;
-    memcpy(privateKey, ret, 32);
-    delete[] ret;
-
-    privateKey[0] &= 248;
-    privateKey[31] &= 63;
-    privateKey[31] |= 64;
-
-    ge_scalarmult_base(&A, privateKey);
-    ge_p3_tobytes(publicKey, &A);
+    uint8_t seed[32];
+    mbedtls_ctr_drbg_random(csrp_ctr_drbg_ctx(), seed, 32);
+    ed25519_create_keypair(publicKey, privateKey, seed);
 }
 
 bool hap_crypto_verify(uint8_t *signature, uint8_t *message, unsigned int len, uint8_t *pubKey) {

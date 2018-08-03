@@ -17,8 +17,8 @@
 #define FIXED_LTPK_ADDR     0x05
 #define FIXED_LTPK_LEN      32
 #define FIXED_LTSK_ADDR     0x25
-#define FIXED_LTSK_LEN      32
-#define FIXED_OBJCNT_ADDR   0x45
+#define FIXED_LTSK_LEN      64
+#define FIXED_OBJCNT_ADDR   0x65
 #define FIXED_OBJCNT_LEN    2
 
 #define DYNAM_PAIR_ID_ADDR  0x00
@@ -126,8 +126,8 @@ unsigned int HAPPersistingStorage::pairedDevicesCount() {
 
 void HAPPersistingStorage::setPairedDeviceCount(unsigned int cnt) {
     uint8_t buf[FIXED_OBJCNT_LEN];
-    for(auto& b : buf){
-        b = static_cast<uint8_t>(cnt % 0xff);
+    for(auto i = FIXED_OBJCNT_LEN - 1; i >= 0; --i){
+        buf[i] = static_cast<uint8_t>(cnt % 0xff);
         cnt /= 0xff;
     }
     hap_persistence_write(handle, FIXED_OBJCNT_ADDR, buf, FIXED_OBJCNT_LEN);
