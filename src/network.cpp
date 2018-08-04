@@ -211,11 +211,11 @@ void hap_http_parse(hap_network_connection *client, const uint8_t *originalData,
         auto copyLength = available > needed ? needed : available;
         memcpy(user->request_buffer + user->request_current_length, data, copyLength);
         user->request_current_length += copyLength;
+    }
 
-        //If we have read all the data we need
-        if (user->request_current_length == user->request_header->content_length) {
-            client->server->emit(HAPEvent::HAP_NET_RECEIVE_REQUEST, client);
-        }
+    //If we have read all the data we need
+    if (user->request_current_length == user->request_header->content_length) {
+        client->server->emit(HAPEvent::HAP_NET_RECEIVE_REQUEST, client);
     }
 }
 
