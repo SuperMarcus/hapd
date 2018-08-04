@@ -67,6 +67,13 @@ struct hap_crypto_setup {
     ~hap_crypto_setup();
 };
 
+struct hap_crypto_verify {
+    uint8_t ePubKey[32];
+    uint8_t eSecKey[32];
+    uint8_t iOSePubKey[32];
+    uint8_t eSharedSecret[32];
+};
+
 /**
  * Add crypto yield listeners to server. Called by
  * HAPPairingsManager::HAPPairingsManager()
@@ -150,7 +157,7 @@ bool hap_crypto_data_decrypt_did_succeed(hap_crypto_info *);
  * @param salt The cstring salt, end with \x00
  * @param info  Cstring info, end with \x00
  */
-void hap_crypto_derive_key(uint8_t * dst, const uint8_t * input, const char * salt, const char * info);
+void hap_crypto_derive_key(uint8_t * dst, const uint8_t * input, const char * salt, const char * info, unsigned int inLen = HAPCRYPTO_SHA_SIZE);
 
 /**
  * Verify ed25519 signature
@@ -161,7 +168,7 @@ void hap_crypto_derive_key(uint8_t * dst, const uint8_t * input, const char * sa
  * @param pubKey Public key
  * @return
  */
-bool hap_crypto_verify(uint8_t * signature, uint8_t * message, unsigned int len, uint8_t * pubKey);
+bool hap_crypto_longterm_verify(uint8_t *signature, uint8_t *message, unsigned int len, uint8_t *pubKey);
 
 /**
  * Sign the message with ed25519
@@ -177,8 +184,28 @@ uint8_t * hap_crypto_sign(uint8_t * message, unsigned int len, uint8_t * pubKey,
  * Synchronized function, since its mild speed
  *
  * Generates ed25519 keypair and store it to the given buffer
+ *
+ * @param publicKey 32bytes buffer
+ * @param privateKey 64bytes buffer
  */
-void hap_crypto_generate_keypair(uint8_t * publicKey, uint8_t * privateKey);
+void hap_crypto_longterm_keypair(uint8_t *publicKey, uint8_t *privateKey);
+
+/**
+ * Synchronized function
+ *
+ * Generates curve25519 keypair
+ *
+ * @param publicKey 32bytes buffer
+ * @param privateKey 32bytes buffer
+ */
+void hap_crypto_ephemeral_keypair(uint8_t *publicKey, uint8_t *privateKey);
+
+/**
+ * Synchronized function
+ *
+ * Exchange curve25519 keys and generates shared secret
+ */
+void hap_crypto_ephemeral_exchange(hap_crypto_verify *);
 
 /**
  * Synchronized function

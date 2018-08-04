@@ -25,6 +25,7 @@ void HAPServer::begin(uint16_t port) {
     _onSelf(HAPEvent::HAPCRYPTO_SRP_INIT_COMPLETE, &HAPServer::_onSetupInitComplete);
     _onSelf(HAPEvent::HAPCRYPTO_SRP_PROOF_COMPLETE, &HAPServer::_onSetupProofComplete);
     _onSelf(HAPEvent::HAP_DEVICE_PAIR, &HAPServer::_onDevicePair);
+    _onSelf(HAPEvent::HAP_DEVICE_VERIFY, &HAPServer::_onDeviceVerify);
 
     delete storage;
     storage = new HAPPersistingStorage();
@@ -100,6 +101,9 @@ void HAPServer::_onRequestReceived(HAPEvent * e) {
     switch (req->path()){
         case PAIR_SETUP:
             pairingsManager->onPairSetup(req);
+            break;
+        case PAIR_VERIFY:
+            pairingsManager->onPairVerify(req);
             break;
         default: HAP_DEBUG("Unimplemented path: %d", req->path());
     }
@@ -207,6 +211,10 @@ void HAPServer:: _onDataDecrypted(HAPEvent * event) {
     if(pairInfo->isPairing){
         pairingsManager->onPairingDeviceDecryption(pairInfo, info->session);
     }
+
+    if(pairInfo->isVerifying){
+        pairingsManager->onVerifyingDeviceDecryption(pairInfo, info->session);
+    }
 }
 
 void HAPServer::_onDataEncrypted(HAPEvent * event) {
@@ -215,6 +223,10 @@ void HAPServer::_onDataEncrypted(HAPEvent * event) {
 
     if(pairInfo->isPairing){
         pairingsManager->onPairingDeviceEncryption(pairInfo, info->session);
+    }
+
+    if(pairInfo->isVerifying){
+        pairingsManager->onVerifyingDeviceEncryption(pairInfo, info->session);
     }
 }
 
@@ -225,9 +237,16 @@ void HAPServer::_onDevicePair(HAPEvent * event) {
     }
 }
 
+void HAPServer::_onDeviceVerify(HAPEvent * event) {
+    auto info = event->arg<hap_pair_info>();
+    if(info->isVerifying){
+        pairingsManager->onDeviceVerified(info, info->infoStore->session);
+    }
+}
+
 void HAPServer::_onInitKeypairReq(HAPEvent *) {
     uint8_t pubKey[32], secKey[64];
-    hap_crypto_generate_keypair(pubKey, secKey);
+    hap_crypto_longterm_keypair(pubKey, secKey);
     storage->setAccessoryLongTermKeys(pubKey, secKey);
 
     HAP_DEBUG("New keypair generated.");

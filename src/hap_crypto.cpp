@@ -13,6 +13,7 @@
 #include "crypto/md.h"
 #include "crypto/hkdf.h"
 #include "crypto/ed25519/ed25519.h"
+#include "crypto/ed25519/curve25519.h"
 #include "async_math.h"
 
 #include <cstring>
@@ -582,6 +583,8 @@ void _chachaPoly_encrypt(HAPEvent * event){
 }
 
 void hap_crypto_init(HAPServer * server) {
+    csrp_init_random();
+
     //M1
     server->on(HAPEvent::HAPCRYPTO_SRP_INIT_FINISH_GEN_SALT, _srpInit_onGenSalt_thenGenPub);
     //M2
@@ -622,14 +625,14 @@ bool hap_crypto_data_decrypt_did_succeed(hap_crypto_info * info) {
     return info->encryptedData == nullptr;
 }
 
-void hap_crypto_derive_key(uint8_t * dst, const uint8_t * input, const char * salt, const char * info) {
+void hap_crypto_derive_key(uint8_t * dst, const uint8_t * input, const char * salt, const char * info, unsigned int inLen) {
     auto mdInfo = mbedtls_md_info_from_type(MBEDTLS_MD_SHA512);
     auto saltLen = strlen(salt);
     auto infoLen = strlen(info);
 
     mbedtls_hkdf(
             mdInfo, reinterpret_cast<const unsigned char *>(salt),
-            saltLen, input, HAPCRYPTO_SHA_SIZE,
+            saltLen, input, inLen,
             reinterpret_cast<const unsigned char *>(info), infoLen,
             dst, HAPCRYPTO_CHACHA_KEYSIZE
     );
@@ -656,13 +659,13 @@ char *hap_crypto_derive_uuid(const char * seed) {
     return formatted;
 }
 
-void hap_crypto_generate_keypair(uint8_t *publicKey, uint8_t *privateKey) {
+void hap_crypto_longterm_keypair(uint8_t *publicKey, uint8_t *privateKey) {
     uint8_t seed[32];
     mbedtls_ctr_drbg_random(csrp_ctr_drbg_ctx(), seed, 32);
     ed25519_create_keypair(publicKey, privateKey, seed);
 }
 
-bool hap_crypto_verify(uint8_t *signature, uint8_t *message, unsigned int len, uint8_t *pubKey) {
+bool hap_crypto_longterm_verify(uint8_t *signature, uint8_t *message, unsigned int len, uint8_t *pubKey) {
     return ed25519_verify(signature, message, len, pubKey) != 0;
 }
 
@@ -670,6 +673,18 @@ uint8_t *hap_crypto_sign(uint8_t *message, unsigned int len, uint8_t * pubKey, u
     auto buf = new uint8_t[64];
     ed25519_sign(buf, message, len, pubKey, secKey);
     return buf;
+}
+
+void hap_crypto_ephemeral_keypair(uint8_t *publicKey, uint8_t *privateKey) {
+    mbedtls_ctr_drbg_random(csrp_ctr_drbg_ctx(), privateKey, 32);
+    privateKey[0] &= 248;
+    privateKey[31] &= 127;
+    privateKey[31] |= 64;
+    curve25519_getpub(publicKey, privateKey);
+}
+
+void hap_crypto_ephemeral_exchange(hap_crypto_verify * store) {
+    curve25519_key_exchange(store->eSharedSecret, store->iOSePubKey, store->eSecKey);
 }
 
 hap_crypto_setup::hap_crypto_setup(HAPServer *server, const char * user, const char * pass):

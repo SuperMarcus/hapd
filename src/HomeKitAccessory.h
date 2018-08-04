@@ -34,6 +34,7 @@ public:
     void send(const void * body = nullptr, unsigned int contentLength = 0);
     void send(tlv8_item * body);
     void send(int status, hap_msg_type type = MESSAGE_TYPE_UNKNOWN);
+    void sendError(uint8_t, int status = HTTP_400_BAD_REQUEST);
 
     void close();
 
@@ -85,6 +86,11 @@ public:
          * Called when a new device is being paired with this accessory.
          */
         HAP_DEVICE_PAIR,
+
+        /**
+         * Called when a paired device is successfully verified
+         */
+        HAP_DEVICE_VERIFY,
 
         /**
          * The followings are cryptography yields. Nothing besides
@@ -145,7 +151,6 @@ public:
     ~HAPServer();
     void begin(uint16_t port = 5001);
     void handle();
-    void setPairingIdentifier(const char * uuid);
 
     //node-like event system but non-blocking so no wdt triggers :D
     HAPEventListener * on(HAPEvent::EventID, HAPEventListener::Callback);
@@ -166,6 +171,7 @@ private:
     void _onDataEncrypted(HAPEvent *);
     void _onInitKeypairReq(HAPEvent *);
     void _onDevicePair(HAPEvent *);
+    void _onDeviceVerify(HAPEvent *);
 
     void _updateSDRecords(HAPEvent *);
 
@@ -180,7 +186,7 @@ private:
 
     void * mdns_handle = nullptr;
     const char * deviceName = "HomeKit Device";
-    const char * deviceId = "F6:A4:35:E3:0B:00";
+    const char * deviceId = "F6:A4:35:E3:0B:07";
     const char * modelName = "HomeKitDevice1,1";
     const char * setupCode = "816-32-958";
 };
@@ -192,6 +198,7 @@ public:
 private:
     friend class HAPServer;
     friend class HAPPairingsManager;
+    friend class HAPUserHelper;
 
     bool isPaired = false;
     bool isVerifying = false;
@@ -201,6 +208,7 @@ private:
     //Only used during setup
     hap_crypto_setup * setupStore = nullptr;
     hap_crypto_info * infoStore = nullptr;
+    hap_crypto_verify * verifyStore = nullptr;
 
     HAPServer * server;
 
@@ -217,9 +225,14 @@ private:
     void onPairSetupM2Finish(hap_crypto_setup *);
     void onPairSetupM4Finish(hap_crypto_setup *);
 
+    void onPairVerify(HAPUserHelper *);
+
     void onPairingDeviceDecryption(hap_pair_info *, HAPUserHelper *);
     void onPairingDeviceEncryption(hap_pair_info *, HAPUserHelper *);
+    void onVerifyingDeviceDecryption(hap_pair_info *, HAPUserHelper *);
+    void onVerifyingDeviceEncryption(hap_pair_info *, HAPUserHelper *);
     void onDevicePaired(hap_pair_info *, HAPUserHelper *);
+    void onDeviceVerified(hap_pair_info *, HAPUserHelper *);
 
     HAPServer * server;
 };

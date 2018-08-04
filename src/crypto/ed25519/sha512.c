@@ -14,5 +14,10 @@ int sha512_update(sha512_context * md, const unsigned char *in, size_t inlen){
 }
 
 int sha512(const unsigned char *message, size_t message_len, unsigned char *out){
-    return mbedtls_sha512_ret(message, (size_t) message, out, 0);
+    sha512_context ctx;
+    int ret;
+    if ((ret = sha512_init(&ctx))) return ret;
+    if ((ret = sha512_update(&ctx, message, message_len))) return ret;
+    if ((ret = sha512_final(&ctx, out))) return ret;
+    return 0;
 }

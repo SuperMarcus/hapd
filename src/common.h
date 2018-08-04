@@ -50,6 +50,7 @@
 class HAPServer;
 struct hap_pair_info;
 struct hap_crypto_info;
+struct hap_crypto_verify;
 struct hap_crypto_setup;
 
 enum hap_msg_type {

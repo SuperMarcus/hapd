@@ -2,6 +2,10 @@
 #ifndef CURVE_25519_H
 #define CURVE_25519_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Create signature based on the Curve25519 montgomery curve
  *
@@ -11,7 +15,7 @@
  * @param private_key - Curve25519 private key (unsigned binary data, low endian, 32 byte)
  * @return 0 on success
  */
-int curve25519_getpub(unsigned char* public_key, const unsigned char* private_key);
+int curve25519_getpub(unsigned char *public_key, const unsigned char *private_key);
 
 /**
  * @brief Create signature based on the Curve25519 montgomery curve
@@ -24,9 +28,9 @@ int curve25519_getpub(unsigned char* public_key, const unsigned char* private_ke
  * @param msg_len - message length
  * @return 0 on success
  */
-int curve25519_sign(unsigned char* signature,
-                    const unsigned char* private_key,
-                    const unsigned char* msg, const unsigned long msg_len);
+int curve25519_sign(unsigned char *signature,
+                    const unsigned char *private_key,
+                    const unsigned char *msg, const unsigned long msg_len);
 
 /**
  * @brief Verify signature based on the Curve25519 montgomery curve
@@ -39,9 +43,9 @@ int curve25519_sign(unsigned char* signature,
  * @param msg_len - message length
  * @return 0 on success
  */
-int curve25519_verify(const unsigned char* signature,
-                      const unsigned char* public_key,
-                      const unsigned char* msg, const unsigned long msg_len);
+int curve25519_verify(const unsigned char *signature,
+                      const unsigned char *public_key,
+                      const unsigned char *msg, const unsigned long msg_len);
 
 /**
  * @brief Compute shared secret based on the Curve25519 montgomery curve
@@ -54,5 +58,9 @@ int curve25519_verify(const unsigned char* signature,
 int curve25519_key_exchange(unsigned char *shared_secret,
                             const unsigned char *public_key,
                             const unsigned char *private_key);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* CURVE_25519_H */

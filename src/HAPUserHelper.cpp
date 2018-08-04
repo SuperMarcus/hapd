@@ -1,3 +1,4 @@
+#include "common.h"
 #include "HomeKitAccessory.h"
 #include "network.h"
 #include "tlv.h"
@@ -93,4 +94,12 @@ void HAPUserHelper::close() {
 
 hap_pair_info * HAPUserHelper::pairInfo() {
     return conn->user->pair_info;
+}
+
+void HAPUserHelper::sendError(uint8_t error, int status) {
+    auto state = pairInfo()->currentStep;
+    auto res = tlv8_insert(nullptr, kTLVType_Error, 1, &error);
+    tlv8_insert(res, kTLVType_State, 1, &state);
+    setResponseStatus(status);
+    send(res);
 }
