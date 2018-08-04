@@ -97,6 +97,10 @@ struct hap_user_connection {
 
     hap_http_description * response_header;
     uint8_t * response_buffer;
+
+    uint8_t * frameBuf;
+    unsigned int frameBufCurrLen;
+    unsigned int frameExpLen;
 };
 
 struct hap_network_connection {

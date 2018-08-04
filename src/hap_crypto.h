@@ -15,9 +15,14 @@
 
 class HAPUserHelper;
 
+#define CRYPTO_FLAG_NETWORK     0b00000001
+#define CRYPTO_FLAG_NO_DELETE   0b00000010
+
 struct hap_crypto_info {
     HAPServer * server;
     HAPUserHelper * session;
+    hap_network_connection * conn = nullptr;
+    uint8_t flags = 0;
 
     uint8_t * encryptedData = nullptr;
     uint8_t * authTag = nullptr;

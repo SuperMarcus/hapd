@@ -124,6 +124,15 @@ void hap_network_flush(hap_network_connection * client);
  */
 void hap_network_response(hap_network_connection * client);
 
+/**
+ * Parse http data
+ *
+ * @param client
+ * @param data
+ * @param length
+ */
+void hap_http_parse(hap_network_connection *client, const uint8_t *data, unsigned int length);
+
 #ifdef __cplusplus
 }
 #endif

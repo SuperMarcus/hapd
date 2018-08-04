@@ -155,6 +155,7 @@ public:
     //node-like event system but non-blocking so no wdt triggers :D
     HAPEventListener * on(HAPEvent::EventID, HAPEventListener::Callback);
     void emit(HAPEvent::EventID, void * args = nullptr, HAPEventListener::Callback onCompletion = nullptr);
+    void onEncryptedData(hap_network_connection *, uint8_t * body, uint8_t * tag, unsigned int bodyLen);
 
 private:
     HAPEventListener * _onSelf(HAPEvent::EventID, HAPEventListener::HAPCallback);
@@ -194,6 +195,8 @@ private:
 struct hap_pair_info{
 public:
     ~hap_pair_info();
+    bool paired();
+    hap_crypto_info * prepare(bool isWrite, hap_network_connection *);
 
 private:
     friend class HAPServer;
@@ -209,6 +212,12 @@ private:
     hap_crypto_setup * setupStore = nullptr;
     hap_crypto_info * infoStore = nullptr;
     hap_crypto_verify * verifyStore = nullptr;
+
+    uint8_t AccessoryToControllerKey[32];
+    uint8_t ControllerToAccessoryKey[32];
+    uint8_t nonceStore[8];
+    uint32_t writeCount = 0;
+    uint32_t readCount = 0;
 
     HAPServer * server;
 

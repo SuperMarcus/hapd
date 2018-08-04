@@ -545,7 +545,8 @@ void _chachaPoly_decrypt(HAPEvent * event){
     delete ctx;
 
     if(ret == 0){
-        delete[] info->encryptedData;//Free encrypted data after decrypted
+        if(!((info->flags) & CRYPTO_FLAG_NO_DELETE)) // NOLINT
+            delete[] info->encryptedData;//Free encrypted data after decrypted
         info->encryptedData = nullptr;
     }
 
@@ -575,7 +576,8 @@ void _chachaPoly_encrypt(HAPEvent * event){
     delete ctx;
 
     if(ret == 0){
-        delete[] info->rawData;
+        if(!((info->flags) & CRYPTO_FLAG_NO_DELETE)) // NOLINT
+            delete[] info->rawData;
         info->rawData = nullptr;
     }
 
@@ -714,9 +716,13 @@ void hap_crypto_info::reset() {
     dataLen = 0;
     delete[] encryptedData;
     delete[] rawData;
+    delete[] aad;
     //Not deleting authTag, since in every scenario auth tag is appended after encryptedData
 //    delete[] authTag;
     encryptedData = nullptr;
     rawData = nullptr;
     authTag = nullptr;
+    aad = nullptr;
+    flags = 0;
+    aadLen = 0;
 }

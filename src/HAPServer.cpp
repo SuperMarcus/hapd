@@ -205,6 +205,14 @@ void HAPServer::_onSetupProofComplete(HAPEvent * event) {
 
 void HAPServer:: _onDataDecrypted(HAPEvent * event) {
     auto info = event->arg<hap_crypto_info>();
+
+    if((info->flags) & CRYPTO_FLAG_NETWORK){ // NOLINT
+        if(hap_crypto_data_decrypt_did_succeed(info)){
+            hap_http_parse(info->conn, info->rawData, info->dataLen);
+        } else { hap_network_close(info->conn); }
+        return;
+    }
+
     auto pairInfo = info->session->pairInfo();
 
     //If isPairing or isVerifying, let PairingsManager handle this decryption
@@ -252,4 +260,21 @@ void HAPServer::_onInitKeypairReq(HAPEvent *) {
     HAP_DEBUG("New keypair generated.");
     hexdump(pubKey, 32);
     hexdump(secKey, 64);
+}
+
+void HAPServer::onEncryptedData(hap_network_connection * client, uint8_t * body, uint8_t * tag, unsigned int bodyLen) {
+    auto user = client->user;
+    auto info = user->pair_info;
+    auto aad = new uint8_t[2];
+    aad[0] = static_cast<uint8_t>(bodyLen % 0xff);
+    aad[1] = static_cast<uint8_t>(bodyLen / 0xff);
+
+    //Prepare read context
+    auto crypto = info->prepare(false, client);
+    crypto->encryptedData = body;
+    crypto->dataLen = bodyLen;
+    crypto->authTag = tag;
+    crypto->aadLen = 2;
+    crypto->aad = aad;
+    hap_crypto_data_decrypt(crypto);
 }

@@ -4,6 +4,7 @@
 
 #include "network.h"
 #include "HomeKitAccessory.h"
+#include "hap_crypto.h"
 
 #include <cstring>
 #include <cmath>
@@ -56,18 +57,15 @@ void hap_event_network_accept(hap_network_connection *server, hap_network_connec
     user->request_header = nullptr;
     user->response_header = nullptr;
     user->response_buffer = nullptr;
+    user->frameBuf = nullptr;
+    user->frameBufCurrLen = 0;
+    user->frameExpLen = 0;
     client->user = user;
     client->server = hap;
     hap->emit(HAPEvent::HAP_NET_CONNECT, client);
 }
 
-/**
- * Called when data is received.
- *
- * @param data Pointer to the data
- * @param length Length of the data
- */
-void hap_event_network_receive(hap_network_connection *client, const uint8_t *originalData, unsigned int length) {
+void hap_http_parse(hap_network_connection *client, const uint8_t *originalData, unsigned int length){
     auto user = client->user;
     auto data = originalData;
 
@@ -219,6 +217,46 @@ void hap_event_network_receive(hap_network_connection *client, const uint8_t *or
             client->server->emit(HAPEvent::HAP_NET_RECEIVE_REQUEST, client);
         }
     }
+}
+
+/**
+ * Called when data is received.
+ *
+ * @param data Pointer to the data
+ * @param length Length of the data
+ */
+void hap_event_network_receive(hap_network_connection *client, const uint8_t *data, unsigned int left) {
+    auto user = client->user;
+    auto info = user->pair_info;
+
+    if(info->paired()) {
+        if(!user->frameBuf){ user->frameBuf = new uint8_t[1024]; }
+
+        while (left > 0){
+            //New frame starts here
+            if(user->frameExpLen == 0){
+                user->frameExpLen = data[0] + (static_cast<unsigned int>(data[1]) * 0xff);
+                left -= 2;
+                data += 2;
+            }
+
+            auto need = (user->frameExpLen + 16) - user->frameBufCurrLen;
+            auto copy = need > left ? left : need;
+            memcpy(user->frameBuf + user->frameBufCurrLen, data, copy);
+            left -= copy;
+            data += copy;
+            user->frameBufCurrLen += copy;
+
+            if(user->frameBufCurrLen == (user->frameExpLen + 16)){
+                //hap crypto will free this buffer when decryption succeed
+                auto buf = new uint8_t[user->frameExpLen + 16];
+                memcpy(buf, user->frameBuf, user->frameExpLen + 16);
+                client->server->onEncryptedData(client, buf, buf + user->frameExpLen, user->frameExpLen);
+                user->frameExpLen = 0;
+                user->frameBufCurrLen = 0;
+            }
+        }
+    } else { hap_http_parse(client, data, left); }
 }
 
 static void hap_user_flush(hap_user_connection * user){

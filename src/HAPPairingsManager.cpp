@@ -429,15 +429,26 @@ void HAPPairingsManager::onVerifyingDeviceDecryption(hap_pair_info * info, HAPUs
 }
 
 void HAPPairingsManager::onDeviceVerified(hap_pair_info * info, HAPUserHelper * request) {
+    const constexpr static char ctlSalt[] = "Control-Salt";
+    const constexpr static char ctlReadInfo[] = "Control-Read-Encryption-Key";
+    const constexpr static char ctlWriteInfo[] = "Control-Write-Encryption-Key";
+
     uint8_t M4 = 4;
+    auto& store = info->verifyStore;
+
     auto response = tlv8_insert(nullptr, kTLVType_State, 1, &M4);
     request->send(response);
     request->release();
 
     info->isVerifying = false;
     info->isPaired = true;
-    delete info->verifyStore;
-    info->verifyStore = nullptr;
+
+    //Derive two control keys
+    hap_crypto_derive_key(info->AccessoryToControllerKey, store->eSharedSecret, ctlSalt, ctlReadInfo, 32);
+    hap_crypto_derive_key(info->ControllerToAccessoryKey, store->eSharedSecret, ctlSalt, ctlWriteInfo, 32);
+
+    delete store;
+    store = nullptr;
 }
 
 hap_pair_info::~hap_pair_info() {
@@ -451,4 +462,26 @@ hap_pair_info::hap_pair_info(HAPServer * server): server(server) { }
 void hap_pair_info::renewInfoStore(HAPUserHelper * session) {
     delete infoStore;
     infoStore = new hap_crypto_info(server, session);
+}
+
+bool hap_pair_info::paired() {
+    return isPaired;
+}
+
+hap_crypto_info *hap_pair_info::prepare(bool isWrite, hap_network_connection * conn) {
+    auto crypto = infoStore;
+    crypto->reset();
+    memcpy(crypto->key, isWrite ? AccessoryToControllerKey : ControllerToAccessoryKey, 32);
+    memset(nonceStore, 0, 8);
+    auto cnt = isWrite ? writeCount : readCount;
+    for(auto& n : nonceStore){
+        n = static_cast<uint8_t>(cnt % 0xff);
+        cnt /= 0xff;
+    }
+    (*(isWrite ? &writeCount : &readCount))++;
+    crypto->nonce = nonceStore;
+    crypto->nonceLen = 8;
+    crypto->conn = conn;
+    crypto->flags |= CRYPTO_FLAG_NETWORK;
+    return crypto;
 }
