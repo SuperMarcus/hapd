@@ -4,6 +4,7 @@
 
 #include <pthread/pthread.h>
 #include <unistd.h>
+#include <cstdio>
 
 int main(){
     HAP_DEBUG("Testing HAP with native socket...");

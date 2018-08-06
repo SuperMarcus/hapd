@@ -7,6 +7,8 @@
 
 #include "platform.h"
 
+#define SCONST const static constexpr
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>

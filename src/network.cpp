@@ -251,7 +251,7 @@ void hap_event_network_receive(hap_network_connection *client, const uint8_t *da
                 //hap crypto will free this buffer when decryption succeed
                 auto buf = new uint8_t[user->frameExpLen + 16];
                 memcpy(buf, user->frameBuf, user->frameExpLen + 16);
-                client->server->onEncryptedData(client, buf, buf + user->frameExpLen, user->frameExpLen);
+                client->server->onInboundData(client, buf, buf + user->frameExpLen, user->frameExpLen);
                 user->frameExpLen = 0;
                 user->frameBufCurrLen = 0;
             }
@@ -275,6 +275,13 @@ static void hap_user_flush(hap_user_connection * user){
         user->request_current_length = 0;
         delete[] buf;
     }
+    buf = user->frameBuf;
+    if(buf) {
+        user->frameBuf = nullptr;
+        user->frameBufCurrLen = 0;
+        user->frameExpLen = 0;
+        delete[] buf;
+    }
 }
 
 /**
@@ -294,6 +301,19 @@ void hap_event_network_close(hap_network_connection *client) {
 void hap_network_flush(hap_network_connection *client) {
     auto user = client->user;
     if (user) { hap_user_flush(user); }
+}
+
+void hap_http_encoded_frame_send(hap_network_connection * client, const uint8_t * data, unsigned int size){
+    auto user = client->user;
+    auto info = user->pair_info;
+
+    //Encrypt if paired&verified
+    if(info->paired()){
+        //Freed by crypto context
+        auto copied = new uint8_t[size];
+        memcpy(copied, data, size);
+        client->server->onOutboundData(client, copied, size);
+    } else { hap_network_send(client, data, size); }
 }
 
 void hap_network_response(hap_network_connection *client) {
@@ -348,7 +368,8 @@ void hap_network_response(hap_network_connection *client) {
             return;
     }
 
-    auto frame_buf = new char[1024]();
+    unsigned int frame_size = 1024;
+    auto frame_buf = new char[frame_size]();
     auto frame_ptr = frame_buf;
 
 #define _NEWCPY(name, ptr) \
@@ -361,7 +382,7 @@ void hap_network_response(hap_network_connection *client) {
     _NEWCPY(ctype_val, ctype_ptr);
     _NEWCPY(clen_hdr, _header_content_length);
 
-    frame_ptr += snprintf_P(frame_ptr, 1024,
+    frame_ptr += snprintf_P(frame_ptr, frame_size,
                "%s %s\r\n%s: %s\r\n%s: %u\r\n\r\n",
                msg_type, status,
                ctype_hdr, ctype_val,
@@ -376,20 +397,20 @@ void hap_network_response(hap_network_connection *client) {
 
     auto bodyPtr = user->response_buffer;
     while ((bodyPtr - user->response_buffer) < header->content_length){
-        auto spaceLen = 1024 - (frame_ptr - frame_buf);
+        auto spaceLen = frame_size - (frame_ptr - frame_buf);
         auto leftLen = header->content_length - (bodyPtr - user->response_buffer);
         auto copyLen = spaceLen > leftLen ? leftLen : spaceLen;
         memcpy(frame_ptr, bodyPtr, copyLen);
         bodyPtr += copyLen;
         frame_ptr += copyLen;
-        hap_network_send(client, reinterpret_cast<const uint8_t *>(frame_buf),
+        hap_http_encoded_frame_send(client, reinterpret_cast<const uint8_t *>(frame_buf),
                          static_cast<unsigned int>(frame_ptr - frame_buf));
-        memset(frame_buf, 0, 1024);
+        memset(frame_buf, 0, frame_size);
         frame_ptr = frame_buf;
     }
 
     if(frame_ptr != frame_buf){
-        hap_network_send(client, reinterpret_cast<const uint8_t *>(frame_buf),
+        hap_http_encoded_frame_send(client, reinterpret_cast<const uint8_t *>(frame_buf),
                          static_cast<unsigned int>(frame_ptr - frame_buf));
     }
 

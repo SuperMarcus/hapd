@@ -105,6 +105,9 @@ void HAPServer::_onRequestReceived(HAPEvent * e) {
         case PAIR_VERIFY:
             pairingsManager->onPairVerify(req);
             break;
+        case ACCESSORIES:
+            if(req->method() == GET){ _sendAttributionDatabase(req); }
+            break;
         default: HAP_DEBUG("Unimplemented path: %d", req->path());
     }
 
@@ -210,6 +213,7 @@ void HAPServer:: _onDataDecrypted(HAPEvent * event) {
         if(hap_crypto_data_decrypt_did_succeed(info)){
             hap_http_parse(info->conn, info->rawData, info->dataLen);
         } else { hap_network_close(info->conn); }
+        delete info;
         return;
     }
 
@@ -227,6 +231,16 @@ void HAPServer:: _onDataDecrypted(HAPEvent * event) {
 
 void HAPServer::_onDataEncrypted(HAPEvent * event) {
     auto info = event->arg<hap_crypto_info>();
+
+    if((info->flags) & CRYPTO_FLAG_NETWORK){ // NOLINT
+        uint8_t frame[info->dataLen + 18];
+        memcpy(frame, info->aad, 2);
+        memcpy(frame + 2, info->encryptedData, info->dataLen + 16);
+        delete info;
+        hap_network_send(info->conn, frame, info->dataLen + 18);
+        return;
+    }
+
     auto pairInfo = info->session->pairInfo();
 
     if(pairInfo->isPairing){
@@ -262,7 +276,7 @@ void HAPServer::_onInitKeypairReq(HAPEvent *) {
     hexdump(secKey, 64);
 }
 
-void HAPServer::onEncryptedData(hap_network_connection * client, uint8_t * body, uint8_t * tag, unsigned int bodyLen) {
+void HAPServer::onInboundData(hap_network_connection *client, uint8_t *body, uint8_t *tag, unsigned int bodyLen) {
     auto user = client->user;
     auto info = user->pair_info;
     auto aad = new uint8_t[2];
@@ -277,4 +291,75 @@ void HAPServer::onEncryptedData(hap_network_connection * client, uint8_t * body,
     crypto->aadLen = 2;
     crypto->aad = aad;
     hap_crypto_data_decrypt(crypto);
+}
+
+void HAPServer::onOutboundData(hap_network_connection * client, uint8_t *body, unsigned int bodyLen) {
+    auto user = client->user;
+    auto info = user->pair_info;
+    auto aad = new uint8_t[2];
+    aad[0] = static_cast<uint8_t>(bodyLen % 0xff);
+    aad[1] = static_cast<uint8_t>(bodyLen / 0xff);
+
+    //Write context
+    auto crypto = info->prepare(true, client);
+    crypto->rawData = body;
+    crypto->dataLen = bodyLen;
+    crypto->aadLen = 2;
+    crypto->aad = aad;
+    hap_crypto_data_encrypt(crypto);
+}
+
+void HAPServer::_sendAttributionDatabase(HAPUserHelper * request) {
+    SCONST uint8_t _begin[] = "{\"accessories\":[";
+    SCONST uint8_t _end[] = "]}";
+    SCONST unsigned int _beginLen = sizeof(_begin) - 1;
+    SCONST unsigned int _endLen = sizeof(_end) - 1;
+    SCONST unsigned int _wrpLen = sizeof(_begin) + sizeof(_end) - 2;
+
+    HAPSerializeOptions options;
+    options.withEv = false;
+    options.withMeta = true;
+    options.withPerms = true;
+    options.withType = true;
+
+    auto another = new HAPUserHelper(nullptr);
+    auto v = request == another;
+
+    unsigned int resLen = _wrpLen;
+    auto current = accessories;
+
+    while (current != nullptr){
+//        resLen += current->serializeLength(&options);
+        current = current->next;
+        resLen += current == nullptr ? 0 : 1;
+    }
+
+    auto buf = new uint8_t[resLen];
+    auto bufPtr = buf;
+
+    memcpy(bufPtr, _begin, _beginLen);
+    bufPtr += _beginLen;
+
+    current = accessories;
+    while (current != nullptr){
+//        current->serialize(&bufPtr, &options);
+        current = current->next;
+        if(current != nullptr){
+            *bufPtr = ',';
+            ++bufPtr;
+        }
+    }
+
+    memcpy(bufPtr, _end, _endLen);
+    bufPtr += _endLen;
+
+    request->setContentType(HAP_JSON);
+    request->send(buf, resLen);
+    delete[] buf;
+}
+
+void HAPServer::addAccessory(BaseAccessory * accessory) {
+    auto current = &accessories;
+    while ((*current) != nullptr){ current = &((*current)->next); }
+    *current = accessory;
 }

@@ -187,8 +187,6 @@ void HAPPairingsManager::onPairingDeviceDecryption(hap_pair_info * info, HAPUser
         if(hap_crypto_longterm_verify(signature, iOSDeviceInfo, IOS_DEVICE_INFO_LEN, deviceLtpk)){
             delete[] signature;
             delete[] iOSDeviceInfo;
-            //Mark device as paired
-            info->isPaired = true;
             server->emit(HAPEvent::HAP_DEVICE_PAIR, info);
             return;
         }
@@ -262,6 +260,9 @@ void HAPPairingsManager::onPairingDeviceEncryption(hap_pair_info * info, HAPUser
 
     request->send(response);
     request->release();
+
+    info->isPaired = true;
+    info->isPairing = false;
 }
 
 void HAPPairingsManager::onPairVerify(HAPUserHelper * request) {
@@ -469,7 +470,7 @@ bool hap_pair_info::paired() {
 }
 
 hap_crypto_info *hap_pair_info::prepare(bool isWrite, hap_network_connection * conn) {
-    auto crypto = infoStore;
+    auto crypto = new hap_crypto_info(server, nullptr);
     crypto->reset();
     memcpy(crypto->key, isWrite ? AccessoryToControllerKey : ControllerToAccessoryKey, 32);
     memset(nonceStore, 0, 8);
