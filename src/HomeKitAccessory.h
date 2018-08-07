@@ -1,3 +1,4 @@
+#include <utility>
 #include "common.h"
 
 class HAPServer;
@@ -23,43 +24,107 @@ struct HAPSerializeOptions {
 };
 
 class BaseCharacteristic {
-private:
+public:
+    SCONST uint32_t type = 0x00000000;
+
+protected:
     friend class BaseAccessory;
+    friend class BaseService;
+
+    explicit BaseCharacteristic(unsigned int cid, HAPServer * server, uint32_t type);
+
+    void setValue(CharacteristicValue v);
 
     unsigned int characteristicIdentifier = 0;
+    uint32_t characteristicTypeIdentifier = 0;
 
+    CharacteristicValue value;
+    CharacteristicValueFormat format;
+    CharacteristicPermissions permissions;
+    HAPServer * server = nullptr;
     BaseCharacteristic * next = nullptr;
 };
 
 class BaseService {
-private:
+public:
+    /**
+     * Every service has a generic static type property, which
+     * can be used to identify the service if we are sure only
+     * a single service of this type is present in the
+     * accessory.
+     */
+    SCONST uint32_t type = 0x00000000;
+
+protected:
     friend class BaseCharacteristic;
+    friend class BaseAccessory;
+
+    explicit BaseService(unsigned int sid, uint32_t type, HAPServer *);
+
+    void addCharacteristic(BaseCharacteristic *);
 
     unsigned int serviceIdentifier = 0;
+    uint32_t serviceTypeIdentifier = 0;
 
     BaseCharacteristic * characteristics = nullptr;
+    HAPServer * server = nullptr;
     BaseService * next = nullptr;
 };
 
 class BaseAccessory {
 public:
-    virtual BaseAccessory(unsigned int aid);
+    template <typename T>
+    T * getService(){
+        BaseService * find = nullptr;
+        auto current = services;
+        while (current != nullptr) {
+            if(current->serviceTypeIdentifier == T::type)
+                find = current;
+            current = current->next;
+        }
+        return find;
+    }
+
+    template <typename T, typename ...Args>
+    T * addService(Args&&... args){
+        auto s = new T(sidPool++, server, std::forward<Args>(args)...);
+        _addService(s);
+        return s;
+    }
 
 private:
     friend class HAPServer;
+
+    explicit BaseAccessory(unsigned int aid, HAPServer *);
+
+    void _addService(BaseService *);
 
     /**
      * An unique id within this server
      */
     unsigned int accessoryIdentifier = 0;
 
+    unsigned int sidPool = 0;
+
     BaseService * services = nullptr;
+    HAPServer * server = nullptr;
     BaseAccessory * next = nullptr;
 };
 
 class HAPServer {
 public:
     ~HAPServer();
+
+    /**
+     * Start the HAPServer, listen to the provided port, and
+     * broadcast this server via mDNS.
+     *
+     * @note All the accessories should be added to this server
+     * before calling this function. Also, please make sure to
+     * call HAPServer::handle() in every loop to process events.
+     *
+     * @param port The port that the server will be listening on
+     */
     void begin(uint16_t port = 5001);
 
     /**
@@ -68,23 +133,40 @@ public:
     void handle();
 
     /**
-     * Add accessory to this server
+     * Get the accessory with aid. Pass 0 to obtain the main
+     * accessory for this server.
+     *
+     * @param aid Accessory identifier
      */
-    void addAccessory(BaseAccessory *);
+    BaseAccessory * getAccessory(unsigned int aid = 0);
+
+    //TODO:
+//    BaseAccessory * addAccessory();
 
     //node-like event system but non-blocking so no wdt triggers :D
     HAPEventListener * on(HAPEvent::EventID, HAPEventListener::Callback);
     void emit(HAPEvent::EventID, void * args = nullptr, HAPEventListener::Callback onCompletion = nullptr);
 
+    const char * modelName = "HomeKitDevice1,1";
+    const char * deviceName = "HomeKit Device";
+
+public:
     //The followings are used by network.c to encrypt/decrypt communications
     //between accessory and verified devices.
     void onInboundData(hap_network_connection *, uint8_t *body, uint8_t *tag, unsigned int bodyLen);
     void onOutboundData(hap_network_connection *, uint8_t *body, unsigned int bodyLen);
 
 private:
+    /**
+     * Add accessory to this server
+     */
+    void addAccessory(BaseAccessory *);
+
+private:
     HAPEventListener * _onSelf(HAPEvent::EventID, HAPEventListener::HAPCallback);
     void _clearEventQueue();
     void _clearEventListeners();
+    void _clearSubscribers();
     HAPEvent * _dequeueEvent();
 
     void _onRequestReceived(HAPEvent *);
@@ -108,14 +190,13 @@ private:
     HAPPairingsManager * pairingsManager = nullptr;
     HAPPersistingStorage * storage = nullptr;
     BaseAccessory * accessories = nullptr;
+    CharacteristicSubscriber * subscribers = nullptr;
 
 private:
     friend class HAPPairingsManager;
 
     void * mdns_handle = nullptr;
-    const char * deviceName = "HomeKit Device";
     const char * deviceId = "F6:A4:35:E3:0B:07";
-    const char * modelName = "HomeKitDevice1,1";
     const char * setupCode = "816-32-958";
 };
 

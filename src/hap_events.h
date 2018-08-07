@@ -80,22 +80,24 @@ public:
 #endif
     };
 
-    template <typename T = void *>
-    T* arg(){ return static_cast<T*>(argument); }
+    template<typename T = void *>
+    T *arg() { return static_cast<T *>(argument); }
 
 private:
     friend class HAPServer;
 
     EventID name = DUMMY;
-    void * argument = nullptr;
-    void (* didEmit)(HAPEvent * event) = nullptr;
+    void *argument = nullptr;
 
-    HAPEvent * next = nullptr;
+    void (*didEmit)(HAPEvent *event) = nullptr;
+
+    HAPEvent *next = nullptr;
 };
 
 struct HAPEventListener {
 public:
-    typedef void (* Callback)(HAPEvent *);
+    typedef void (*Callback)(HAPEvent *);
+
     typedef void (HAPServer::*HAPCallback)(HAPEvent *);
 
 private:
@@ -105,7 +107,17 @@ private:
     Callback onEvent = nullptr;
     HAPCallback _internalOnEvent = nullptr;
 
-    HAPEventListener * next = nullptr;
+    HAPEventListener *next = nullptr;
+};
+
+struct CharacteristicSubscriber {
+private:
+    friend class HAPServer;
+
+    HAPUserHelper * session = nullptr;
+    BaseCharacteristic * listening = nullptr;
+
+    CharacteristicSubscriber *next = nullptr;
 };
 
 #endif //ARDUINOHOMEKIT_HAP_EVENTS_H

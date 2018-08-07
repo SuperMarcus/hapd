@@ -2,6 +2,7 @@
 #include "network.h"
 #include "hap_crypto.h"
 #include "HAPPersistingStorage.h"
+#include "service/AccessoryInformation.h"
 
 #include <cstring>
 
@@ -10,6 +11,7 @@ HAPServer HKAccessory;
 void HAPServer::begin(uint16_t port) {
     _clearEventListeners();
     _clearEventQueue();
+    _clearSubscribers();
 
     //Register all events handled internally by HAPServer
     _onSelf(HAPEvent::HAP_SD_NEEDED_UPDATE, &HAPServer::_updateSDRecords);
@@ -37,6 +39,11 @@ void HAPServer::begin(uint16_t port) {
     server_conn->raw = nullptr;
     server_conn->user = nullptr;
     server_conn->server = this;
+
+    //Init the default accessory with aid 0
+    //TODO: free all accessories
+    delete accessories;
+    accessories = new BaseAccessory(0, this);
 
     hap_network_init_bind(server_conn, port);
     mdns_handle = hap_service_discovery_init(deviceName, port);
@@ -167,6 +174,15 @@ void HAPServer::_clearEventListeners() {
     eventListeners = nullptr;
 }
 
+void HAPServer::_clearSubscribers() {
+    auto current = subscribers;
+    while (current != nullptr){
+        auto next = current->next;
+        delete current;
+        current = next;
+    }
+}
+
 void HAPServer::_updateSDRecords(HAPEvent *) {
     hap_sd_txt_item records[] = {
             { "c#", "2" },
@@ -185,6 +201,7 @@ void HAPServer::_updateSDRecords(HAPEvent *) {
 HAPServer::~HAPServer() {
     hap_service_discovery_deinit(mdns_handle);
     mdns_handle = nullptr;
+    //TODO: free all accessories
 }
 
 void HAPServer::_onConnect(HAPEvent * event) {
@@ -362,4 +379,12 @@ void HAPServer::addAccessory(BaseAccessory * accessory) {
     auto current = &accessories;
     while ((*current) != nullptr){ current = &((*current)->next); }
     *current = accessory;
+}
+
+BaseAccessory * HAPServer::getAccessory(unsigned int aid) {
+    auto current = accessories;
+    while (current != nullptr && current->accessoryIdentifier != aid){
+        current = current->next;
+    }
+    return current;
 }
