@@ -75,6 +75,7 @@ bool hap_network_init_bind(hap_network_connection * conn, uint16_t port){
 
 bool hap_network_send(hap_network_connection * client, const uint8_t * data, unsigned int length){
     if(client->raw == nullptr) return false;
+    HAP_DEBUG("Sending %d raw bytes", length);
     auto client_fd = static_cast<_hap_bsdsock*>(client->raw);
     auto eno = send(client_fd->fd, data, length, 0);
     N_RET(eno, "send", false);

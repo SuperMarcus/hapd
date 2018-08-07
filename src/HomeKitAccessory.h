@@ -16,6 +16,8 @@ struct tlv8_item;
 #include "hap_formats.h"
 #include "hap_pair_info.h"
 
+unsigned int _nextIid(HAPServer *);
+
 struct HAPSerializeOptions {
     bool withMeta = false;
     bool withPerms = false;
@@ -30,12 +32,13 @@ public:
 protected:
     friend class BaseAccessory;
     friend class BaseService;
+    friend class HAPServer;
 
-    explicit BaseCharacteristic(unsigned int cid, HAPServer * server, uint32_t type);
+    explicit BaseCharacteristic(HAPServer * server, uint32_t type);
 
     void setValue(CharacteristicValue v);
 
-    unsigned int characteristicIdentifier = 0;
+    unsigned int instanceIdentifier = 0;
     uint32_t characteristicTypeIdentifier = 0;
 
     CharacteristicValue value;
@@ -58,13 +61,15 @@ public:
 protected:
     friend class BaseCharacteristic;
     friend class BaseAccessory;
+    friend class HAPServer;
 
-    explicit BaseService(unsigned int sid, uint32_t type, HAPServer *);
+    explicit BaseService(uint32_t type, HAPServer *);
 
     void addCharacteristic(BaseCharacteristic *);
 
-    unsigned int serviceIdentifier = 0;
+    unsigned int instanceIdentifier = 0;
     uint32_t serviceTypeIdentifier = 0;
+    uint8_t flags = 0;
 
     BaseCharacteristic * characteristics = nullptr;
     HAPServer * server = nullptr;
@@ -87,7 +92,7 @@ public:
 
     template <typename T, typename ...Args>
     T * addService(Args&&... args){
-        auto s = new T(sidPool++, server, std::forward<Args>(args)...);
+        auto s = new T(server, std::forward<Args>(args)...);
         _addService(s);
         return s;
     }
@@ -103,8 +108,6 @@ private:
      * An unique id within this server
      */
     unsigned int accessoryIdentifier = 0;
-
-    unsigned int sidPool = 0;
 
     BaseService * services = nullptr;
     HAPServer * server = nullptr;
@@ -140,6 +143,13 @@ public:
      */
     BaseAccessory * getAccessory(unsigned int aid = 0);
 
+    /**
+     * Check if the user is a subscriber of the characteristic
+     *
+     * @return true if the user is
+     */
+    bool isSubscriber(HAPUserHelper *, BaseCharacteristic *);
+
     //TODO:
 //    BaseAccessory * addAccessory();
 
@@ -157,10 +167,16 @@ public:
     void onOutboundData(hap_network_connection *, uint8_t *body, unsigned int bodyLen);
 
 private:
+    friend class BaseAccessory;
+    friend class BaseService;
+    friend class BaseCharacteristic;
+
     /**
      * Add accessory to this server
      */
     void addAccessory(BaseAccessory *);
+
+    unsigned int instanceIdPool = 0;
 
 private:
     HAPEventListener * _onSelf(HAPEvent::EventID, HAPEventListener::HAPCallback);
@@ -183,6 +199,7 @@ private:
     void _updateSDRecords(HAPEvent *);
 
     void _sendAttributionDatabase(HAPUserHelper *);
+    unsigned int _serializeService(char *, unsigned int len, BaseService *, HAPUserHelper *, HAPSerializeOptions *);
 
     hap_network_connection * server_conn = nullptr;
     HAPEvent * eventQueue = nullptr;
@@ -196,7 +213,7 @@ private:
     friend class HAPPairingsManager;
 
     void * mdns_handle = nullptr;
-    const char * deviceId = "F6:A4:35:E3:0B:07";
+    const char * deviceId = "F6:A4:35:E3:0B:08";
     const char * setupCode = "816-32-958";
 };
 

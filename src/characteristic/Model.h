@@ -9,7 +9,7 @@
 
 class Model: public GenericCharacteristic<0x00000021, CPERM_PR, FORMAT_STRING, const char *>{
 public:
-    Model(unsigned int cid, HAPServer *server) : GenericCharacteristic(cid, server) {
+    explicit Model(HAPServer *server) : GenericCharacteristic(server) {
         value.string_value = server->modelName;
     }
 };

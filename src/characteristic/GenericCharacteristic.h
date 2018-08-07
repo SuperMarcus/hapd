@@ -8,8 +8,8 @@
 template <uint32_t UUID, uint8_t Perm, CharacteristicValueFormat Fmt, typename ResT>
 class GenericCharacteristic: public BaseCharacteristic {
 public:
-    GenericCharacteristic(unsigned int cid, HAPServer *server) :
-            BaseCharacteristic(cid, server, static_cast<uint32_t>(UUID)) {
+    explicit GenericCharacteristic(HAPServer *server) :
+            BaseCharacteristic(server, static_cast<uint32_t>(UUID)) {
         format = Fmt;
         value.uint8_value = 0;
         permissions = Perm;

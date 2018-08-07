@@ -1,4 +1,5 @@
 #include "HomeKitAccessory.h"
+#include "service/Switch.h"
 
 #ifdef HAP_NATIVE_DEBUG_ENV
 
@@ -10,6 +11,7 @@ int main(){
     HAP_DEBUG("Testing HAP with native socket...");
 
     HKAccessory.begin();
+    HKAccessory.getAccessory()->addService<Switch>();
 
     while (1){
         HKAccessory.handle();

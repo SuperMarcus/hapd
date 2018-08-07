@@ -253,8 +253,8 @@ void HAPServer::_onDataEncrypted(HAPEvent * event) {
         uint8_t frame[info->dataLen + 18];
         memcpy(frame, info->aad, 2);
         memcpy(frame + 2, info->encryptedData, info->dataLen + 16);
-        delete info;
         hap_network_send(info->conn, frame, info->dataLen + 18);
+        delete info;
         return;
     }
 
@@ -287,10 +287,6 @@ void HAPServer::_onInitKeypairReq(HAPEvent *) {
     uint8_t pubKey[32], secKey[64];
     hap_crypto_longterm_keypair(pubKey, secKey);
     storage->setAccessoryLongTermKeys(pubKey, secKey);
-
-    HAP_DEBUG("New keypair generated.");
-    hexdump(pubKey, 32);
-    hexdump(secKey, 64);
 }
 
 void HAPServer::onInboundData(hap_network_connection *client, uint8_t *body, uint8_t *tag, unsigned int bodyLen) {
@@ -326,55 +322,6 @@ void HAPServer::onOutboundData(hap_network_connection * client, uint8_t *body, u
     hap_crypto_data_encrypt(crypto);
 }
 
-void HAPServer::_sendAttributionDatabase(HAPUserHelper * request) {
-    SCONST uint8_t _begin[] = "{\"accessories\":[";
-    SCONST uint8_t _end[] = "]}";
-    SCONST unsigned int _beginLen = sizeof(_begin) - 1;
-    SCONST unsigned int _endLen = sizeof(_end) - 1;
-    SCONST unsigned int _wrpLen = sizeof(_begin) + sizeof(_end) - 2;
-
-    HAPSerializeOptions options;
-    options.withEv = false;
-    options.withMeta = true;
-    options.withPerms = true;
-    options.withType = true;
-
-    auto another = new HAPUserHelper(nullptr);
-    auto v = request == another;
-
-    unsigned int resLen = _wrpLen;
-    auto current = accessories;
-
-    while (current != nullptr){
-//        resLen += current->serializeLength(&options);
-        current = current->next;
-        resLen += current == nullptr ? 0 : 1;
-    }
-
-    auto buf = new uint8_t[resLen];
-    auto bufPtr = buf;
-
-    memcpy(bufPtr, _begin, _beginLen);
-    bufPtr += _beginLen;
-
-    current = accessories;
-    while (current != nullptr){
-//        current->serialize(&bufPtr, &options);
-        current = current->next;
-        if(current != nullptr){
-            *bufPtr = ',';
-            ++bufPtr;
-        }
-    }
-
-    memcpy(bufPtr, _end, _endLen);
-    bufPtr += _endLen;
-
-    request->setContentType(HAP_JSON);
-    request->send(buf, resLen);
-    delete[] buf;
-}
-
 void HAPServer::addAccessory(BaseAccessory * accessory) {
     auto current = &accessories;
     while ((*current) != nullptr){ current = &((*current)->next); }
@@ -387,4 +334,14 @@ BaseAccessory * HAPServer::getAccessory(unsigned int aid) {
         current = current->next;
     }
     return current;
+}
+
+bool HAPServer::isSubscriber(HAPUserHelper * user, BaseCharacteristic * c) {
+    auto curr = subscribers;
+    auto ret = false;
+    while(curr != nullptr){
+        ret |= curr->session->equals(user) && curr->listening == c;
+        curr = curr->next;
+    }
+    return ret;
 }

@@ -26,8 +26,9 @@ public:
     void setResponseType(hap_msg_type type);
     void setContentType(hap_http_content_type responseCtype);
     void setBody(const void * body = nullptr, unsigned int contentLength = 0);
-    void send(const char * body, int contentLength = -1);
-    void send(const void * body = nullptr, unsigned int contentLength = 0);
+    void send();
+    void send(const char * body);
+    void send(const void * body, unsigned int contentLength);
     void send(tlv8_item * body);
     void send(int status, hap_msg_type type = MESSAGE_TYPE_UNKNOWN);
     void sendError(uint8_t, int status = HTTP_400_BAD_REQUEST);

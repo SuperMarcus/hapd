@@ -9,7 +9,7 @@
 
 class FirmwareRevision : public GenericCharacteristic<0x00000052, CPERM_PR, FORMAT_STRING, const char *> {
 public:
-    FirmwareRevision(unsigned int cid, HAPServer *server) : GenericCharacteristic(cid, server) {
+    explicit FirmwareRevision(HAPServer *server) : GenericCharacteristic(server) {
         value.string_value = "1.0.0";
     }
 };

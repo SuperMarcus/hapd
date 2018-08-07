@@ -28,7 +28,7 @@ void HAPUserHelper::send(const void *body, unsigned int contentLength) {
     //TODO: remove
     HAP_DEBUG("HTTP Message sending...status %d, len %d", conn->user->response_header->status, conn->user->response_header->content_length);
     hexdump(body, contentLength);
-    hap_network_response(conn);
+    send();
 }
 
 void HAPUserHelper::send(int status, hap_msg_type type) {
@@ -37,9 +37,9 @@ void HAPUserHelper::send(int status, hap_msg_type type) {
     send();
 }
 
-void HAPUserHelper::send(const char *body, int contentLength) {
-    if(contentLength < 0){ contentLength = static_cast<int>(strlen(body)); }
-    send(reinterpret_cast<const void*>(body), static_cast<unsigned int>(contentLength));
+void HAPUserHelper::send(const char *body) {
+    auto contentLength = static_cast<unsigned int>(strlen(body));
+    send(reinterpret_cast<const void*>(body), contentLength);
 }
 
 void HAPUserHelper::send(tlv8_item * chain) {
@@ -102,4 +102,8 @@ void HAPUserHelper::sendError(uint8_t error, int status) {
     tlv8_insert(res, kTLVType_State, 1, &state);
     setResponseStatus(status);
     send(res);
+}
+
+void HAPUserHelper::send() {
+    hap_network_response(conn);
 }

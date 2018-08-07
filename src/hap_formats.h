@@ -35,6 +35,9 @@ enum CharacteristicValueFormat {
 #define CPERM_TW    0b00010000
 #define CPERM_HD    0b00100000
 
+#define SRV_PRIMARY 0b00000001
+#define SRV_HIDDEN  0b00000010
+
 typedef uint8_t CharacteristicPermissions;
 
 #endif //ARDUINOHOMEKIT_HAP_FORMATS_H

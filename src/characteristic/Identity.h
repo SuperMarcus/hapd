@@ -9,7 +9,7 @@
 
 class Identity: public GenericCharacteristic<0x00000014, CPERM_PW, FORMAT_BOOL, bool> {
 public:
-    Identity(unsigned int cid, HAPServer *server) : GenericCharacteristic(cid, server) {
+    explicit Identity(HAPServer *server) : GenericCharacteristic(server) {
         value.bool_value = false;
     }
 

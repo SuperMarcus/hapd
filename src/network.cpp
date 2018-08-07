@@ -368,7 +368,7 @@ void hap_network_response(hap_network_connection *client) {
             return;
     }
 
-    unsigned int frame_size = 1024;
+    unsigned int frame_size = user->pair_info->paired() ? 1024 : 1006;
     auto frame_buf = new char[frame_size]();
     auto frame_ptr = frame_buf;
 
