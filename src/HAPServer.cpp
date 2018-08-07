@@ -2,7 +2,6 @@
 #include "network.h"
 #include "hap_crypto.h"
 #include "HAPPersistingStorage.h"
-#include "service/AccessoryInformation.h"
 
 #include <cstring>
 
@@ -293,8 +292,8 @@ void HAPServer::onInboundData(hap_network_connection *client, uint8_t *body, uin
     auto user = client->user;
     auto info = user->pair_info;
     auto aad = new uint8_t[2];
-    aad[0] = static_cast<uint8_t>(bodyLen % 0xff);
-    aad[1] = static_cast<uint8_t>(bodyLen / 0xff);
+    aad[0] = static_cast<uint8_t>(bodyLen % 256);
+    aad[1] = static_cast<uint8_t>(bodyLen / 256);
 
     //Prepare read context
     auto crypto = info->prepare(false, client);
@@ -310,8 +309,8 @@ void HAPServer::onOutboundData(hap_network_connection * client, uint8_t *body, u
     auto user = client->user;
     auto info = user->pair_info;
     auto aad = new uint8_t[2];
-    aad[0] = static_cast<uint8_t>(bodyLen % 0xff);
-    aad[1] = static_cast<uint8_t>(bodyLen / 0xff);
+    aad[0] = static_cast<uint8_t>(bodyLen % 256);
+    aad[1] = static_cast<uint8_t>(bodyLen / 256);
 
     //Write context
     auto crypto = info->prepare(true, client);
