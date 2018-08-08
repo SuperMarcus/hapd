@@ -13,3 +13,17 @@ void BaseAccessory::_addService(BaseService * s) {
     }
     *current = s;
 }
+
+BaseCharacteristic *BaseAccessory::getCharacteristic(unsigned int iid) {
+    BaseCharacteristic * res = nullptr;
+    auto currentAcc = services;
+    while (currentAcc != nullptr && res == nullptr){
+        auto currentChar = currentAcc->characteristics;
+        while (currentChar != nullptr && res == nullptr){
+            if(currentChar->instanceIdentifier == iid) res = currentChar;
+            currentChar = currentChar->next;
+        }
+        currentAcc = currentAcc->next;
+    }
+    return res;
+}

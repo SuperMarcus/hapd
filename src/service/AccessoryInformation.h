@@ -15,7 +15,7 @@
 
 class AccessoryInformation: public GenericService<0x0000003E> {
 public:
-    AccessoryInformation(HAPServer * s) : GenericService(s) {
+    AccessoryInformation(unsigned int parentAccessory, HAPServer * s) : GenericService(parentAccessory, s) {
         addCharacteristic<Identity>();
         addCharacteristic<Manufacturer>();
         addCharacteristic<Model>();

@@ -8,6 +8,7 @@
 union CharacteristicValue {
     const char * string_value;
     bool bool_value;
+    int32_t int_value;
     uint8_t uint8_value;
     uint16_t uint16_value;
     uint32_t uint32_value;

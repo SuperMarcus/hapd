@@ -7,6 +7,7 @@
 
 struct hap_pair_info{
 public:
+    explicit hap_pair_info(HAPServer *);
     ~hap_pair_info();
     bool paired();
     hap_crypto_info * prepare(bool isWrite, hap_network_connection *);
@@ -35,7 +36,6 @@ private:
 
     HAPServer * server;
 
-    explicit hap_pair_info(HAPServer *);
     void renewInfoStore(HAPUserHelper *);
 };
 

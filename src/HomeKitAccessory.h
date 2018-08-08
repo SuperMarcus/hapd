@@ -23,22 +23,26 @@ struct HAPSerializeOptions {
     bool withPerms = false;
     bool withType = false;
     bool withEv = false;
+    unsigned int aid = 0;
 };
 
 class BaseCharacteristic {
 public:
     SCONST uint32_t type = 0x00000000;
 
+    HAPUserHelper * lastOperator = nullptr;
+
 protected:
     friend class BaseAccessory;
     friend class BaseService;
     friend class HAPServer;
 
-    explicit BaseCharacteristic(HAPServer * server, uint32_t type);
+    explicit BaseCharacteristic(unsigned int parentAccessory, HAPServer * server, uint32_t type);
 
-    void setValue(CharacteristicValue v);
+    void setValue(CharacteristicValue v, HAPUserHelper * sender = nullptr);
 
     unsigned int instanceIdentifier = 0;
+    unsigned int accessoryIdentifier = 0;
     uint32_t characteristicTypeIdentifier = 0;
 
     CharacteristicValue value;
@@ -63,10 +67,11 @@ protected:
     friend class BaseAccessory;
     friend class HAPServer;
 
-    explicit BaseService(uint32_t type, HAPServer *);
+    explicit BaseService(unsigned int parentAccessory, uint32_t type, HAPServer *);
 
     void addCharacteristic(BaseCharacteristic *);
 
+    unsigned int accessoryIdentifier = 0;
     unsigned int instanceIdentifier = 0;
     uint32_t serviceTypeIdentifier = 0;
     uint8_t flags = 0;
@@ -92,10 +97,19 @@ public:
 
     template <typename T, typename ...Args>
     T * addService(Args&&... args){
-        auto s = new T(server, std::forward<Args>(args)...);
+        auto s = new T(accessoryIdentifier, server, std::forward<Args>(args)...);
         _addService(s);
         return s;
     }
+
+    /**
+     * Get the characteristic on this accessory with the given
+     * instance identifier.
+     *
+     * @param iid
+     * @return
+     */
+    BaseCharacteristic * getCharacteristic(unsigned int iid);
 
 private:
     friend class HAPServer;
@@ -144,11 +158,31 @@ public:
     BaseAccessory * getAccessory(unsigned int aid = 1);
 
     /**
+     * Get the instance of Characteristic with its instance
+     * identifier (iid)
+     *
+     * @param iid Instance identifier of the characteristic
+     * @param aid Accessory identifier, default to 1, which is the main accessory
+     * @return
+     */
+    BaseCharacteristic * getCharacteristic(unsigned int iid, unsigned int aid = 1);
+
+    /**
      * Check if the user is a subscriber of the characteristic
      *
      * @return true if the user is
      */
     bool isSubscriber(HAPUserHelper *, BaseCharacteristic *);
+
+    /**
+     * Make the user listen to changes in the provided characteristic
+     */
+    void subscribe(HAPUserHelper *, BaseCharacteristic *);
+
+    /**
+     * Remove the user as a subscriber to the provided characteristic
+     */
+    void unsubscribe(HAPUserHelper *, BaseCharacteristic *);
 
     //TODO:
 //    BaseAccessory * addAccessory();
@@ -165,6 +199,7 @@ public:
     //between accessory and verified devices.
     void onInboundData(hap_network_connection *, uint8_t *body, uint8_t *tag, unsigned int bodyLen);
     void onOutboundData(hap_network_connection *, uint8_t *body, unsigned int bodyLen);
+    void preDeviceDisconnection(hap_network_connection *);
 
 private:
     friend class BaseAccessory;
@@ -195,11 +230,16 @@ private:
     void _onInitKeypairReq(HAPEvent *);
     void _onDevicePair(HAPEvent *);
     void _onDeviceVerify(HAPEvent *);
+    void _onCharUpdate(HAPEvent *);
 
     void _updateSDRecords(HAPEvent *);
 
+    void _handleCharacteristicWrite(HAPUserHelper *);
     void _sendAttributionDatabase(HAPUserHelper *);
     unsigned int _serializeService(char *, unsigned int len, BaseService *, HAPUserHelper *, HAPSerializeOptions *);
+    unsigned int _serializeCharacteristic(char *, unsigned int len, BaseCharacteristic *, HAPUserHelper *, HAPSerializeOptions *);
+    unsigned int _serializeMultiCharacteristics(char *, unsigned int len, const char * aidIids, HAPUserHelper *, HAPSerializeOptions *);
+    unsigned int _serializeUpdatedCharacteristics(char *, unsigned int len, BaseCharacteristic **, HAPUserHelper *, HAPSerializeOptions * options);
 
     hap_network_connection * server_conn = nullptr;
     HAPEvent * eventQueue = nullptr;

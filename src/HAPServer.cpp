@@ -18,6 +18,8 @@ void HAPServer::begin(uint16_t port) {
     _onSelf(HAPEvent::HAP_NET_CONNECT, &HAPServer::_onConnect);
     _onSelf(HAPEvent::HAP_NET_DISCONNECT, &HAPServer::_onDisconnect);
 
+    _onSelf(HAPEvent::HAP_CHARACTERISTIC_UPDATE, &HAPServer::_onCharUpdate);
+
     _onSelf(HAPEvent::HAPCRYPTO_DECRYPTED, &HAPServer::_onDataDecrypted);
     _onSelf(HAPEvent::HAPCRYPTO_ENCRYPTED, &HAPServer::_onDataEncrypted);
     _onSelf(HAPEvent::HAP_INITIALIZE_KEYPAIR, &HAPServer::_onInitKeypairReq);
@@ -117,6 +119,23 @@ void HAPServer::_onRequestReceived(HAPEvent * e) {
         case ACCESSORIES:
             if(req->method() == GET){ _sendAttributionDatabase(req); }
             break;
+        case CHARACTERISTICS: {
+            if(req->method() == GET){
+                auto params = req->params();
+                auto idPtr = params->id;
+                HAPSerializeOptions options {};
+
+                auto size = _serializeMultiCharacteristics(nullptr, 0, idPtr, req, &options);
+                auto buf = new char[size + 1]();
+                _serializeMultiCharacteristics(buf, size, idPtr, req, &options);
+
+                req->setContentType(HAP_JSON);
+                req->send(buf);
+
+                delete[] buf;
+            } else if (req->method() == PUT) { _handleCharacteristicWrite(req); }
+            break;
+        }
         default: HAP_DEBUG("Unimplemented path: %d", req->path());
     }
 
@@ -128,6 +147,7 @@ void HAPServer::_clearEventQueue() {
         if(current->didEmit) current->didEmit(current);
         delete current;
     }
+    eventQueue = nullptr;
 }
 
 HAPEvent *HAPServer::_dequeueEvent() {
@@ -208,7 +228,6 @@ HAPServer::~HAPServer() {
 
 void HAPServer::_onConnect(HAPEvent * event) {
     auto c = event->arg<hap_network_connection>();
-    c->user->pair_info = new hap_pair_info(this);
 }
 
 void HAPServer::_onDisconnect(HAPEvent * event) {
@@ -342,8 +361,96 @@ bool HAPServer::isSubscriber(HAPUserHelper * user, BaseCharacteristic * c) {
     auto curr = subscribers;
     auto ret = false;
     while(curr != nullptr){
-        ret |= curr->session->equals(user) && curr->listening == c;
+        ret |= user->equals(curr->session) && curr->listening == c;
         curr = curr->next;
     }
     return ret;
+}
+
+BaseCharacteristic *HAPServer::getCharacteristic(unsigned int iid, unsigned int aid) {
+    BaseCharacteristic * res = nullptr;
+    auto accessory = getAccessory(aid);
+    if(accessory) res = accessory->getCharacteristic(iid);
+    return res;
+}
+
+void HAPServer::subscribe(HAPUserHelper *session, BaseCharacteristic *characteristic) {
+    auto curr = &subscribers;
+    while (*curr != nullptr){
+        //Return if already subscribed
+        if(session->equals((*curr)->session))
+            return;
+        curr = &(*curr)->next;
+    }
+    *curr = new CharacteristicSubscriber();
+    (*curr)->session = session->conn;
+    (*curr)->listening = characteristic;
+}
+
+//TODO: "coalesce notifications whenever possible"
+void HAPServer::_onCharUpdate(HAPEvent * event) {
+    auto c = event->arg<BaseCharacteristic>();
+    BaseCharacteristic * updated[] = { c, nullptr };
+    HAPSerializeOptions options;
+    options.withEv = false;
+    options.withMeta = false;
+    options.withPerms = false;
+    options.withType = false;
+    options.aid = c->accessoryIdentifier;
+    unsigned int len = _serializeUpdatedCharacteristics(nullptr, 0, updated, c->lastOperator, &options);
+    auto buf = new char[len];
+    _serializeUpdatedCharacteristics(buf, len, updated, c->lastOperator, &options);
+
+    auto current = subscribers;
+    while (current != nullptr){
+        if(!c->lastOperator->equals(current->session)){
+            auto receiver = new HAPUserHelper(current->session);
+            receiver->retain();
+            receiver->setContentType(HAP_JSON);
+            receiver->setResponseType(EVENT_1_0);
+            receiver->send(buf, len);
+            receiver->release();
+        }
+        current = current->next;
+    }
+
+    delete[] buf;
+}
+
+void HAPServer::unsubscribe(HAPUserHelper * user, BaseCharacteristic * characteristic) {
+    auto current = subscribers;
+    CharacteristicSubscriber ** rm = &subscribers;
+    while (current != nullptr){
+        if(user->equals(current->session) && current->listening == characteristic){
+            *rm = current->next;
+            auto tmp = current->next;
+            delete current;
+            current = tmp;
+        } else {
+            rm = &current->next;
+            current = current->next;
+        }
+    }
+}
+
+void HAPServer::preDeviceDisconnection(hap_network_connection *conn) {
+    auto session = new HAPUserHelper(conn);
+    session->retain();
+
+    //Remove user from subscriber list
+    auto current = subscribers;
+    CharacteristicSubscriber ** rm = &subscribers;
+    while (current != nullptr){
+        if(session->equals(current->session)){
+            *rm = current->next;
+            auto tmp = current->next;
+            delete current;
+            current = tmp;
+        } else {
+            rm = &current->next;
+            current = current->next;
+        }
+    }
+
+    session->release();
 }

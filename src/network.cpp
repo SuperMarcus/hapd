@@ -60,6 +60,7 @@ void hap_event_network_accept(hap_network_connection *server, hap_network_connec
     user->frameBuf = nullptr;
     user->frameBufCurrLen = 0;
     user->frameExpLen = 0;
+    user->pair_info = new hap_pair_info(hap);
     client->user = user;
     client->server = hap;
     hap->emit(HAPEvent::HAP_NET_CONNECT, client);
@@ -139,6 +140,44 @@ void hap_http_parse(hap_network_connection *client, const uint8_t *originalData,
             delete user->request_header;
             user->request_header = nullptr;
             return;
+        }
+
+        //Parse request parameters
+        if(*data == '?'){
+            auto params = &user->request_header->parameters;
+            while (*data != ' '){
+                SCONST char _id[] = "id";
+                SCONST char _meta[] = "meta";
+                SCONST char _perms[] = "perms";
+                SCONST char _type[] = "type";
+                SCONST char _ev[] = "ev";
+
+                char key[6];
+                memset(key, 0, sizeof(key));
+                const uint8_t * valueStart;
+
+                char * keyPtr = key;
+                while (*(data += 1) != '=') *keyPtr++ = *data;
+                valueStart = ++data;
+                while (*(data += 1) != ' ' && *data != '&');
+
+                if(strcasecmp(key, _id) == 0){
+                    auto buf = new char[data - valueStart + 1];
+                    memset(buf, 0, data - valueStart + 1);
+                    memcpy(buf, valueStart, data - valueStart);
+                    params->id = buf;
+                } else if(strcasecmp(key, _meta) == 0){
+                    params->meta = *valueStart == '1' || *valueStart == 't';
+                } else if(strcasecmp(key, _perms) == 0){
+                    params->perms = *valueStart == '1' || *valueStart == 't';
+                } else if(strcasecmp(key, _type) == 0){
+                    params->type = *valueStart == '1' || *valueStart == 't';
+                } else if(strcasecmp(key, _ev) == 0){
+                    params->ev = *valueStart == '1' || *valueStart == 't';
+                } else {
+                    HAP_DEBUG("Unidentifiable parameter %s", key);
+                }
+            }
         }
 
         data += 11;//Skip the " HTTP/1.1\r\n"
@@ -266,6 +305,10 @@ static void hap_user_flush(hap_user_connection * user){
             delete[] header->host;
             header->host = nullptr;
         }
+        if(header->parameters.id){
+            delete[] header->parameters.id;
+            header->parameters.id = nullptr;
+        }
         user->request_header = nullptr;
         delete header;
     }
@@ -289,6 +332,7 @@ static void hap_user_flush(hap_user_connection * user){
  */
 void hap_event_network_close(hap_network_connection *client) {
     auto user = client->user;
+    client->server->preDeviceDisconnection(client);
     client->server->emit(HAPEvent::HAP_NET_DISCONNECT, user, [](HAPEvent * e){
         auto u = e->arg<hap_user_connection>();
         hap_user_flush(u);
@@ -319,7 +363,7 @@ void hap_http_encoded_frame_send(hap_network_connection * client, const uint8_t 
 void hap_network_response(hap_network_connection *client) {
     auto user = client->user;
     auto header = user->response_header;
-    const char *status_ptr, *msg_type_ptr, *ctype_ptr;
+    const char *status_ptr, *msg_type_ptr, *ctype_ptr = nullptr;
 
 #define _CASE_STATUS(stat) \
     case stat: \
@@ -363,9 +407,7 @@ void hap_network_response(hap_network_connection *client) {
         case HAP_JSON:
             ctype_ptr = _ctype_json;
             break;
-        default:
-            HAP_DEBUG("Unknown content type: %d. Not sending this response.", header->content_type);
-            return;
+        case CONTENT_TYPE_UNKNOWN: break;
     }
 
     unsigned int frame_size = user->pair_info->paired() ? 1024 : 1006;
@@ -378,21 +420,30 @@ void hap_network_response(hap_network_connection *client) {
 
     _NEWCPY(msg_type, msg_type_ptr);
     _NEWCPY(status, status_ptr);
-    _NEWCPY(ctype_hdr, _header_content_type);
-    _NEWCPY(ctype_val, ctype_ptr);
     _NEWCPY(clen_hdr, _header_content_length);
 
-    frame_ptr += snprintf_P(frame_ptr, frame_size,
-               "%s %s\r\n%s: %s\r\n%s: %u\r\n\r\n",
-               msg_type, status,
-               ctype_hdr, ctype_val,
-               clen_hdr, header->content_length
-    );
+    //Not sending the content-type if content type is not set
+    if(ctype_ptr){
+        _NEWCPY(ctype_hdr, _header_content_type);
+        _NEWCPY(ctype_val, ctype_ptr);
+        frame_ptr += snprintf_P(frame_ptr, frame_size,
+                                "%s %s\r\n%s: %s\r\n%s: %u\r\n\r\n",
+                                msg_type, status,
+                                ctype_hdr, ctype_val,
+                                clen_hdr, header->content_length
+        );
+        delete[] ctype_hdr;
+        delete[] ctype_val;
+    }else{
+        frame_ptr += snprintf_P(frame_ptr, frame_size,
+                                "%s %s\r\n%s: %u\r\n\r\n",
+                                msg_type, status,
+                                clen_hdr, header->content_length
+        );
+    }
 
     delete[] msg_type;
     delete[] status;
-    delete[] ctype_hdr;
-    delete[] ctype_val;
     delete[] clen_hdr;
 
     auto bodyPtr = user->response_buffer;

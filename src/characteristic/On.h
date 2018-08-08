@@ -9,7 +9,7 @@
 
 class On : public GenericCharacteristic<0x00000025, CPERM_PW | CPERM_PR | CPERM_EV, FORMAT_BOOL, bool> {
 public:
-    explicit On(HAPServer *server) : GenericCharacteristic(server) { }
+    explicit On(unsigned int parentAccessory, HAPServer *server) : GenericCharacteristic(parentAccessory, server) { }
 };
 
 #endif //ARDUINOHOMEKIT_ON_H

@@ -10,7 +10,7 @@
 
 class Switch : public GenericService<0x00000049> {
 public:
-    explicit Switch(HAPServer *s) : GenericService(s) {
+    explicit Switch(unsigned int parentAccessory, HAPServer *s) : GenericService(parentAccessory, s) {
         addCharacteristic<On>();
     }
 };

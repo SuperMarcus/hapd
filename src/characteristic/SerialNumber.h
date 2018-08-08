@@ -9,7 +9,7 @@
 
 class SerialNumber : public GenericCharacteristic<0x00000030, CPERM_PR, FORMAT_STRING, const char *> {
 public:
-    explicit SerialNumber(HAPServer *server) : GenericCharacteristic(server) {
+    explicit SerialNumber(unsigned int parentAccessory, HAPServer *server) : GenericCharacteristic(parentAccessory, server) {
         value.string_value = "000000000";
     }
 };

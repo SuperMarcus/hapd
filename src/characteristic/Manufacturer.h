@@ -9,7 +9,7 @@
 
 class Manufacturer: public GenericCharacteristic<0x00000020, CPERM_PR, FORMAT_STRING, const char *>{
 public:
-    explicit Manufacturer(HAPServer *server) : GenericCharacteristic(server) {
+    explicit Manufacturer(unsigned int parentAccessory, HAPServer *server) : GenericCharacteristic(parentAccessory, server) {
         value.string_value = "HomeKitManufacturer";
     }
 };

@@ -9,7 +9,7 @@
 
 class Name : public GenericCharacteristic<0x00000023, CPERM_PR, FORMAT_STRING, const char *>{
 public:
-    explicit Name(HAPServer *server) : GenericCharacteristic(server) {
+    explicit Name(unsigned int parentAccessory, HAPServer *server) : GenericCharacteristic(parentAccessory, server) {
         value.string_value = server->deviceName;
     }
 

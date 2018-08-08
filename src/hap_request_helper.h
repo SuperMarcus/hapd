@@ -21,6 +21,7 @@ public:
     hap_http_method method();
     hap_http_content_type requestContentType();
     hap_pair_info * pairInfo();
+    const hap_http_request_parameters * params();
 
     void setResponseStatus(int status);
     void setResponseType(hap_msg_type type);
@@ -42,6 +43,7 @@ public:
     { return conn == this->conn; }
 
 private:
+    friend class HAPServer;
     hap_network_connection * conn;
     unsigned int refCount;
 };

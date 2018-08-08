@@ -79,6 +79,16 @@ enum hap_http_content_type {
     HAP_JSON // application/hap+json
 };
 
+struct hap_http_request_parameters {
+    const char * id = nullptr;
+
+    //The followings are in sequence corresponding to HAPSerializeOptions
+    bool meta = false;
+    bool perms = false;
+    bool type = false;
+    bool ev = false;
+};
+
 //Contains all the headers needed
 struct hap_http_description {
     hap_msg_type message_type = HTTP_1_1;
@@ -88,6 +98,7 @@ struct hap_http_description {
     uint16_t status = 204;//Default to 204 no content
     unsigned int content_length = 0;
     hap_http_content_type content_type = CONTENT_TYPE_UNKNOWN;
+    hap_http_request_parameters parameters;
 };
 
 //Contains information for requests & responses

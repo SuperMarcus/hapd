@@ -10,14 +10,14 @@
 template <uint32_t UUID>
 class GenericService: public BaseService {
 public:
-    explicit GenericService(HAPServer * s): BaseService(static_cast<uint32_t>(UUID), s) {}
+    explicit GenericService(unsigned int parentAccessory, HAPServer * s): BaseService(parentAccessory, static_cast<uint32_t>(UUID), s) {}
 
     SCONST uint32_t type = static_cast<uint32_t>(UUID);
 
 protected:
     template <typename T, typename ...Args>
     T * addCharacteristic(Args&&... args){
-        auto c = new T(server, std::forward<Args>(args)...);
+        auto c = new T(accessoryIdentifier, server, std::forward<Args>(args)...);
         BaseService::addCharacteristic(c);
         return c;
     }

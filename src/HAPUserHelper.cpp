@@ -69,7 +69,9 @@ void HAPUserHelper::retain() {
 
 void HAPUserHelper::release() {
     --refCount;
-    if(refCount == 0){ delete this; }
+    if(refCount == 0){
+        delete this;
+    }
 }
 
 unsigned int HAPUserHelper::dataLength() {
@@ -106,4 +108,8 @@ void HAPUserHelper::sendError(uint8_t error, int status) {
 
 void HAPUserHelper::send() {
     hap_network_response(conn);
+}
+
+const hap_http_request_parameters *HAPUserHelper::params() {
+    return &conn->user->request_header->parameters;
 }

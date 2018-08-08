@@ -1,7 +1,7 @@
 #include "HomeKitAccessory.h"
 
-BaseService::BaseService(uint32_t type, HAPServer * s):
-        serviceTypeIdentifier(type), server(s) {
+BaseService::BaseService(unsigned int parentAccessory, uint32_t type, HAPServer * s):
+        serviceTypeIdentifier(type), server(s), accessoryIdentifier(parentAccessory) {
     instanceIdentifier = server->instanceIdPool++;
 }
 
