@@ -26,6 +26,7 @@ private:
     hap_crypto_info * infoStore = nullptr;
     hap_crypto_verify * verifyStore = nullptr;
 
+    uint8_t identifier[36];
     uint8_t AccessoryToControllerKey[32];
     uint8_t ControllerToAccessoryKey[32];
     uint8_t nonceStore[8];

@@ -176,12 +176,14 @@ unsigned int HAPServer::_serializeService(
             delete[] fmt;
         }
 
-        bpprintf(_iidFmt, c->instanceIdentifier);
-        bpush(',');
+        if((c->permissions) & CPERM_PR){ // NOLINT
+            auto valFmt = getValueFormatFmt(c->format);
+            bprintf(valFmt, _v(c->value, c->format));
+            delete[] valFmt;
+            bpush(',');
+        }
 
-        auto valFmt = getValueFormatFmt(c->format);
-        bprintf(valFmt, _v(c->value, c->format));
-        delete[] valFmt;
+        bpprintf(_iidFmt, c->instanceIdentifier);
 
         bpush('}');
 

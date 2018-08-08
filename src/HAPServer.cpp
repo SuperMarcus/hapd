@@ -39,10 +39,10 @@ void HAPServer::begin(uint16_t port) {
     server_conn->user = nullptr;
     server_conn->server = this;
 
-    //Init the default accessory with aid 0
+    //Init the default accessory with aid 1
     //TODO: free all accessories
     delete accessories;
-    accessories = new BaseAccessory(0, this);
+    accessories = new BaseAccessory(1, this);
 
     hap_network_init_bind(server_conn, port);
     mdns_handle = hap_service_discovery_init(deviceName, port);
@@ -110,6 +110,9 @@ void HAPServer::_onRequestReceived(HAPEvent * e) {
             break;
         case PAIR_VERIFY:
             pairingsManager->onPairVerify(req);
+            break;
+        case PAIRINGS:
+            pairingsManager->onPairingOperations(req);
             break;
         case ACCESSORIES:
             if(req->method() == GET){ _sendAttributionDatabase(req); }

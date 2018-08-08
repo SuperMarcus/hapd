@@ -152,3 +152,34 @@ PairedDevice * HAPPersistingStorage::retrievePairedDevice(const uint8_t *identif
     }
     return nullptr;
 }
+
+bool HAPPersistingStorage::removePairedDevice(const uint8_t *identifier) {
+    auto origCnt = pairedDevicesCount();
+    auto cnt = origCnt;
+    uint8_t idBuf[DYNAM_PAIR_ID_LEN];
+    for(unsigned int i = 0; i < cnt; ++i){
+        auto addr = HAP_FIXED_BLOCK_SIZE + (i * HAP_DYNAM_BLOCK_SIZE);
+        hap_persistence_read(
+                handle,
+                addr + DYNAM_PAIR_ID_ADDR,
+                idBuf,
+                DYNAM_PAIR_ID_LEN
+        );
+        if(memcmp(idBuf, identifier, DYNAM_PAIR_ID_LEN) == 0){
+            PairedDevice buf {};
+            //Move the last block to the current block, and decrease the cnt value
+            auto lastAddr = HAP_FIXED_BLOCK_SIZE + ((cnt - 1) * HAP_DYNAM_BLOCK_SIZE);
+            if(lastAddr != addr){
+                hap_persistence_read(handle, lastAddr, reinterpret_cast<uint8_t *>(&buf), HAP_DYNAM_BLOCK_SIZE);
+                hap_persistence_write(handle, addr, reinterpret_cast<const uint8_t *>(&buf), HAP_DYNAM_BLOCK_SIZE);
+            }
+            //Write zeros to the last block
+            memset(&buf, 0, HAP_DYNAM_BLOCK_SIZE);
+            hap_persistence_write(handle, lastAddr, reinterpret_cast<const uint8_t *>(&buf), HAP_DYNAM_BLOCK_SIZE);
+            cnt -= 1;
+        }
+    }
+    HAP_DEBUG("Removed %d devices", origCnt - cnt);
+    setPairedDeviceCount(cnt);
+    return cnt < origCnt;
+}

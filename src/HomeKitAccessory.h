@@ -107,7 +107,7 @@ private:
     /**
      * An unique id within this server
      */
-    unsigned int accessoryIdentifier = 0;
+    unsigned int accessoryIdentifier = 1;
 
     BaseService * services = nullptr;
     HAPServer * server = nullptr;
@@ -136,12 +136,12 @@ public:
     void handle();
 
     /**
-     * Get the accessory with aid. Pass 0 to obtain the main
+     * Get the accessory with aid. Pass 1 to obtain the main
      * accessory for this server.
      *
      * @param aid Accessory identifier
      */
-    BaseAccessory * getAccessory(unsigned int aid = 0);
+    BaseAccessory * getAccessory(unsigned int aid = 1);
 
     /**
      * Check if the user is a subscriber of the characteristic
@@ -176,7 +176,7 @@ private:
      */
     void addAccessory(BaseAccessory *);
 
-    unsigned int instanceIdPool = 0;
+    unsigned int instanceIdPool = 1;
 
 private:
     HAPEventListener * _onSelf(HAPEvent::EventID, HAPEventListener::HAPCallback);
@@ -213,7 +213,7 @@ private:
     friend class HAPPairingsManager;
 
     void * mdns_handle = nullptr;
-    const char * deviceId = "F6:A4:35:E3:0B:08";
+    const char * deviceId = "F6:A4:35:E3:0B:09";
     const char * setupCode = "816-32-958";
 };
 
@@ -225,8 +225,8 @@ private:
     void onPairSetup(HAPUserHelper *);
     void onPairSetupM2Finish(hap_crypto_setup *);
     void onPairSetupM4Finish(hap_crypto_setup *);
-
     void onPairVerify(HAPUserHelper *);
+    void onPairingOperations(HAPUserHelper *);
 
     void onPairingDeviceDecryption(hap_pair_info *, HAPUserHelper *);
     void onPairingDeviceEncryption(hap_pair_info *, HAPUserHelper *);

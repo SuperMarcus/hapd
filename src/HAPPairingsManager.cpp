@@ -374,6 +374,42 @@ void HAPPairingsManager::onPairVerify(HAPUserHelper * request) {
     tlv8_free(chain);
 }
 
+void HAPPairingsManager::onPairingOperations(HAPUserHelper * request) {
+    if(request->requestContentType() != HAP_PAIRING_TLV8){
+        request->sendError(kTLVError_Unknown);
+        return;
+    }
+
+    if(!request->pairInfo()->paired()){
+        request->sendError(kTLVError_Authentication);
+        return;
+    }
+
+    auto chain = tlv8_parse(request->data(), request->dataLength());
+    auto method = *tlv8_find(chain, kTLVType_Method)->value;
+    uint8_t M2 = 2;
+
+    switch(method){
+        case METHOD_REMOVE_PAIRING: {
+            uint8_t identifier[IOS_PAIRING_ID_LEN];
+            tlv8_read(tlv8_find(chain, kTLVType_Identifier),
+                      identifier,
+                      IOS_PAIRING_ID_LEN);
+            auto response = tlv8_insert(nullptr, kTLVType_State, 1, &M2);
+            if(!server->storage->removePairedDevice(identifier)){
+                uint8_t error = kTLVError_Unknown;
+                request->setResponseStatus(HTTP_400_BAD_REQUEST);
+                response = tlv8_insert(response, kTLVType_Error, 1, &error);
+            }
+            request->send(response);
+            break;
+        }
+        default: HAP_DEBUG("Unimplemented method: %d", method);
+    }
+
+    tlv8_free(chain);
+}
+
 void HAPPairingsManager::onVerifyingDeviceEncryption(hap_pair_info * info, HAPUserHelper * request) {
     if(info->currentStep != 2) return;
 
@@ -411,11 +447,12 @@ void HAPPairingsManager::onVerifyingDeviceDecryption(hap_pair_info * info, HAPUs
             memcpy(iOSDeviceInfo, store->iOSePubKey, 32);
             memcpy(iOSDeviceInfo + 32, ident, IOS_PAIRING_ID_LEN);
             memcpy(iOSDeviceInfo + 32 + IOS_PAIRING_ID_LEN, store->ePubKey, 32);
+            delete pairedDevice;
 
             if(hap_crypto_longterm_verify(signature, iOSDeviceInfo, IOS_DEVICE_INFO_LEN, pairedDevice->publicKey)){
                 delete[] signature;
-                delete pairedDevice;
                 tlv8_free(subtlv);
+                memcpy(info->identifier, ident, IOS_PAIRING_ID_LEN);
                 server->emit(HAPEvent::HAP_DEVICE_VERIFY, info);
                 return;
             }

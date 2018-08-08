@@ -83,6 +83,13 @@ public:
     void addPairedDevice(const uint8_t * identifier, const uint8_t * publicKey, const PersistFlags * flags = nullptr);
 
     /**
+     * Remove a paired device from storage
+     *
+     * @return
+     */
+    bool removePairedDevice(const uint8_t * identifier);
+
+    /**
      * Retrieve the stored device pairing data
      *
      * @param identifier 36 bytes device identifier
