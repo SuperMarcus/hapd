@@ -176,6 +176,7 @@ unsigned int HAPServer::_serializeService(
             delete[] fmt;
         }
 
+        //Only send value when the characteristic have PairedRead permission
         if((c->permissions) & CPERM_PR){ // NOLINT
             auto valFmt = getValueFormatFmt(c->format);
             bprintf(valFmt, _v(c->value, c->format));

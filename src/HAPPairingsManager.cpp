@@ -404,6 +404,19 @@ void HAPPairingsManager::onPairingOperations(HAPUserHelper * request) {
             request->send(response);
             break;
         }
+        case METHOD_ADD_PAIRING: {
+            uint8_t identifier[IOS_PAIRING_ID_LEN];
+            uint8_t pubKey[32];
+            PersistFlags flags {};
+            tlv8_read(tlv8_find(chain, kTLVType_Identifier), identifier, IOS_PAIRING_ID_LEN);
+            tlv8_read(tlv8_find(chain, kTLVType_PublicKey), pubKey, 32);
+            //We are using flag b to store the permission flags
+            tlv8_read(tlv8_find(chain, kTLVType_Permissions), &flags.b, 1);
+            server->storage->addPairedDevice(identifier, pubKey, &flags);
+            auto response = tlv8_insert(nullptr, kTLVType_State, 1, &M2);
+            request->send(response);
+            break;
+        }
         default: HAP_DEBUG("Unimplemented method: %d", method);
     }
 
