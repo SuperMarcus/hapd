@@ -2,8 +2,8 @@
 // Created by Xule Zhou on 8/7/18.
 //
 
-#ifndef ARDUINOHOMEKIT_SERIALNUMBER_H
-#define ARDUINOHOMEKIT_SERIALNUMBER_H
+#ifndef HAPD_SERIALNUMBER_H
+#define HAPD_SERIALNUMBER_H
 
 #include "GenericCharacteristic.h"
 
@@ -14,4 +14,4 @@ public:
     }
 };
 
-#endif //ARDUINOHOMEKIT_SERIALNUMBER_H
+#endif //HAPD_SERIALNUMBER_H

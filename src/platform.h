@@ -10,6 +10,9 @@
 #define USE_HAP_LWIP
 #define USE_HARDWARE_SERIAL
 #define USE_ESPARDUINO_MDNS
+#define USE_SPIFLASH_PERSISTENT
+#define CONST_DATA
+//#define CONST_DATA __attribute__((aligned(4))) __attribute__((section(.irom.text)))
 #define DETERMINED_PLATFORM
 
 /**
@@ -34,6 +37,8 @@
 
 //Disable pgmspace
 #define NATIVE_STRINGS
+
+#define CONST_DATA
 
 //for pgmspace compatibility
 #define PROGMEM

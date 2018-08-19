@@ -2,8 +2,8 @@
 // Created by Xule Zhou on 7/29/18.
 //
 
-#ifndef ARDUINOHOMEKIT_PERSISTENCE_H
-#define ARDUINOHOMEKIT_PERSISTENCE_H
+#ifndef HAPD_PERSISTENCE_H
+#define HAPD_PERSISTENCE_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -11,6 +11,8 @@ extern "C" {
 
 /**
  * Persistence Storage Blocks
+ *
+ * Version 0x02: Pad all sizes to multiples of 32bits
  *
  * There are two sections in the persistence storage data structure:
  * - A fixed section of 74 bytes
@@ -20,16 +22,16 @@ extern "C" {
  * |   Fixed Section   |
  *  -------------------
  * 0x00       | ---
- *  > 1byte   | Storage version = 0x01
- * 0x01       | ---
+ *  > 4byte   | Storage version = 0x02
+ * 0x04       | ---
  *  > 4bytes  | Flags
- * 0x05       | ---
+ * 0x08       | ---
  *  > 32bytes | AccessoryLTPK: ed25519 public key
- * 0x25       | ---
+ * 0x28       | ---
  *  > 64bytes | AccessoryLTSK: ed25519 private key
- * 0x65       | ---
- *  > 2bytes  | Number of objects in dynamic section in big endian
- * 0x67       | ---
+ * 0x68       | ---
+ *  > 4bytes  | Number of objects in dynamic section in big endian
+ * 0x6c       | ---
  *  -----------------------------
  * |  Dynamic Block (One Block)  |
  *  -----------------------------
@@ -42,9 +44,9 @@ extern "C" {
  * 0x48       | ---
  */
 
-#define HAP_FIXED_BLOCK_SIZE    0x67
+#define HAP_FIXED_BLOCK_SIZE    0x6c
 #define HAP_DYNAM_BLOCK_SIZE    0x48
-#define HAP_STORAGE_FMT_VERSION 0x01
+#define HAP_STORAGE_FMT_VERSION 0x02
 
 /**
  * Allocate and initialize the persistence handle
@@ -90,4 +92,4 @@ void hap_persistence_deinit(void *);
 }
 #endif
 
-#endif //ARDUINOHOMEKIT_PERSISTENCE_H
+#endif //HAPD_PERSISTENCE_H

@@ -2,8 +2,8 @@
 // Created by Xule Zhou on 8/6/18.
 //
 
-#ifndef ARDUINOHOMEKIT_HAP_PAIR_INFO_H
-#define ARDUINOHOMEKIT_HAP_PAIR_INFO_H
+#ifndef HAPD_HAP_PAIR_INFO_H
+#define HAPD_HAP_PAIR_INFO_H
 
 struct hap_pair_info{
 public:
@@ -39,4 +39,4 @@ private:
     void renewInfoStore(HAPUserHelper *);
 };
 
-#endif //ARDUINOHOMEKIT_HAP_PAIR_INFO_H
+#endif //HAPD_HAP_PAIR_INFO_H

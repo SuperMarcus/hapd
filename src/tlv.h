@@ -2,8 +2,8 @@
 // Created by Xule Zhou on 6/4/18.
 //
 
-#ifndef ARDUINOHOMEKIT_TLV_H
-#define ARDUINOHOMEKIT_TLV_H
+#ifndef HAPD_TLV_H
+#define HAPD_TLV_H
 
 #include <cstdint>
 
@@ -184,4 +184,4 @@ void tlv8_encode(const tlv8_item * chain, uint8_t * destination);
  */
 uint8_t * tlv8_export_free(tlv8_item * chain, unsigned int * exportedLength);
 
-#endif //ARDUINOHOMEKIT_TLV_H
+#endif //HAPD_TLV_H

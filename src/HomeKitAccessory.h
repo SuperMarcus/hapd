@@ -221,8 +221,6 @@ private:
     HAPEvent * _dequeueEvent();
 
     void _onRequestReceived(HAPEvent *);
-    void _onConnect(HAPEvent *);
-    void _onDisconnect(HAPEvent *);
     void _onSetupInitComplete(HAPEvent *);
     void _onSetupProofComplete(HAPEvent *);
     void _onDataDecrypted(HAPEvent *);
@@ -232,7 +230,7 @@ private:
     void _onDeviceVerify(HAPEvent *);
     void _onCharUpdate(HAPEvent *);
 
-    void _updateSDRecords(HAPEvent *);
+    void _updateSDRecords();
 
     void _handleCharacteristicWrite(HAPUserHelper *);
     void _sendAttributionDatabase(HAPUserHelper *);

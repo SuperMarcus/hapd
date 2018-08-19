@@ -2,8 +2,8 @@
 // Created by Xule Zhou on 6/4/18.
 //
 
-#ifndef ARDUINOHOMEKIT_NETWORK_H
-#define ARDUINOHOMEKIT_NETWORK_H
+#ifndef HAPD_NETWORK_H
+#define HAPD_NETWORK_H
 
 #include "common.h"
 
@@ -137,4 +137,4 @@ void hap_http_parse(hap_network_connection *client, const uint8_t *data, unsigne
 }
 #endif
 
-#endif //ARDUINOHOMEKIT_NETWORK_H
+#endif //HAPD_NETWORK_H

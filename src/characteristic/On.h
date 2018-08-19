@@ -2,8 +2,8 @@
 // Created by Xule Zhou on 8/7/18.
 //
 
-#ifndef ARDUINOHOMEKIT_ON_H
-#define ARDUINOHOMEKIT_ON_H
+#ifndef HAPD_ON_H
+#define HAPD_ON_H
 
 #include "GenericCharacteristic.h"
 
@@ -12,4 +12,4 @@ public:
     explicit On(unsigned int parentAccessory, HAPServer *server) : GenericCharacteristic(parentAccessory, server) { }
 };
 
-#endif //ARDUINOHOMEKIT_ON_H
+#endif //HAPD_ON_H

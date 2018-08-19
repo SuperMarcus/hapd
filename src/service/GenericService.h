@@ -2,8 +2,8 @@
 // Created by Xule Zhou on 8/7/18.
 //
 
-#ifndef ARDUINOHOMEKIT_GENERIC_H
-#define ARDUINOHOMEKIT_GENERIC_H
+#ifndef HAPD_GENERIC_H
+#define HAPD_GENERIC_H
 
 #include <utility>
 
@@ -25,4 +25,4 @@ protected:
     unsigned int aidPool = 0;
 };
 
-#endif //ARDUINOHOMEKIT_GENERIC_H
+#endif //HAPD_GENERIC_H

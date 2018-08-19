@@ -13,10 +13,7 @@ void HAPServer::begin(uint16_t port) {
     _clearSubscribers();
 
     //Register all events handled internally by HAPServer
-    _onSelf(HAPEvent::HAP_SD_NEEDED_UPDATE, &HAPServer::_updateSDRecords);
     _onSelf(HAPEvent::HAP_NET_RECEIVE_REQUEST, &HAPServer::_onRequestReceived);
-    _onSelf(HAPEvent::HAP_NET_CONNECT, &HAPServer::_onConnect);
-    _onSelf(HAPEvent::HAP_NET_DISCONNECT, &HAPServer::_onDisconnect);
 
     _onSelf(HAPEvent::HAP_CHARACTERISTIC_UPDATE, &HAPServer::_onCharUpdate);
 
@@ -41,14 +38,9 @@ void HAPServer::begin(uint16_t port) {
     server_conn->user = nullptr;
     server_conn->server = this;
 
-    //Init the default accessory with aid 1
-    //TODO: free all accessories
-    delete accessories;
-    accessories = new BaseAccessory(1, this);
-
     hap_network_init_bind(server_conn, port);
     mdns_handle = hap_service_discovery_init(deviceName, port);
-    emit(HAPEvent::HAP_SD_NEEDED_UPDATE);
+    _updateSDRecords();
 }
 
 void HAPServer::handle() {
@@ -205,7 +197,7 @@ void HAPServer::_clearSubscribers() {
     }
 }
 
-void HAPServer::_updateSDRecords(HAPEvent *) {
+void HAPServer::_updateSDRecords() {
     hap_sd_txt_item records[] = {
             { "c#", "2" },
             { "ff", "0" },
@@ -224,16 +216,6 @@ HAPServer::~HAPServer() {
     hap_service_discovery_deinit(mdns_handle);
     mdns_handle = nullptr;
     //TODO: free all accessories
-}
-
-void HAPServer::_onConnect(HAPEvent * event) {
-    auto c = event->arg<hap_network_connection>();
-}
-
-void HAPServer::_onDisconnect(HAPEvent * event) {
-    auto user = event->arg<hap_user_connection>();
-    delete user->pair_info;
-    user->pair_info = nullptr;
 }
 
 void HAPServer::_onSetupInitComplete(HAPEvent * event) {
@@ -350,6 +332,11 @@ void HAPServer::addAccessory(BaseAccessory * accessory) {
 }
 
 BaseAccessory * HAPServer::getAccessory(unsigned int aid) {
+    if(!accessories){
+        accessories = new BaseAccessory(1, this);
+        return accessories;
+    }
+
     auto current = accessories;
     while (current != nullptr && current->accessoryIdentifier != aid){
         current = current->next;

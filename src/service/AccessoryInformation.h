@@ -2,8 +2,8 @@
 // Created by Xule Zhou on 8/7/18.
 //
 
-#ifndef ARDUINOHOMEKIT_ACCESSORYINFORMATION_H
-#define ARDUINOHOMEKIT_ACCESSORYINFORMATION_H
+#ifndef HAPD_ACCESSORYINFORMATION_H
+#define HAPD_ACCESSORYINFORMATION_H
 
 #include "GenericService.h"
 #include "../characteristic/Identity.h"
@@ -25,4 +25,4 @@ public:
     }
 };
 
-#endif //ARDUINOHOMEKIT_ACCESSORYINFORMATION_H
+#endif //HAPD_ACCESSORYINFORMATION_H

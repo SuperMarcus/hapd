@@ -2,8 +2,8 @@
 // Created by Xule Zhou on 8/6/18.
 //
 
-#ifndef ARDUINOHOMEKIT_HAP_REQUEST_HELPER_H
-#define ARDUINOHOMEKIT_HAP_REQUEST_HELPER_H
+#ifndef HAPD_HAP_REQUEST_HELPER_H
+#define HAPD_HAP_REQUEST_HELPER_H
 
 class HAPUserHelper {
 public:
@@ -48,4 +48,4 @@ private:
     unsigned int refCount;
 };
 
-#endif //ARDUINOHOMEKIT_HAP_REQUEST_HELPER_H
+#endif //HAPD_HAP_REQUEST_HELPER_H

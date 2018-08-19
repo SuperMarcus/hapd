@@ -2,8 +2,8 @@
 // Created by Xule Zhou on 8/7/18.
 //
 
-#ifndef ARDUINOHOMEKIT_GENERICSERVICE_H
-#define ARDUINOHOMEKIT_GENERICSERVICE_H
+#ifndef HAPD_GENERICSERVICE_H
+#define HAPD_GENERICSERVICE_H
 
 template <uint32_t UUID, uint8_t Perm, CharacteristicValueFormat Fmt, typename ResT>
 class GenericCharacteristic: public BaseCharacteristic {
@@ -22,4 +22,4 @@ public:
     SCONST uint32_t type = static_cast<uint32_t>(UUID);
 };
 
-#endif //ARDUINOHOMEKIT_GENERICSERVICE_H
+#endif //HAPD_GENERICSERVICE_H

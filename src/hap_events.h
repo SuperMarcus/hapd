@@ -2,8 +2,8 @@
 // Created by Xule Zhou on 8/6/18.
 //
 
-#ifndef ARDUINOHOMEKIT_HAP_EVENTS_H
-#define ARDUINOHOMEKIT_HAP_EVENTS_H
+#ifndef HAPD_HAP_EVENTS_H
+#define HAPD_HAP_EVENTS_H
 
 struct HAPEvent {
 public:
@@ -126,4 +126,4 @@ private:
     CharacteristicSubscriber *next = nullptr;
 };
 
-#endif //ARDUINOHOMEKIT_HAP_EVENTS_H
+#endif //HAPD_HAP_EVENTS_H

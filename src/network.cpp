@@ -335,6 +335,8 @@ void hap_event_network_close(hap_network_connection *client) {
     client->server->preDeviceDisconnection(client);
     client->server->emit(HAPEvent::HAP_NET_DISCONNECT, user, [](HAPEvent * e){
         auto u = e->arg<hap_user_connection>();
+        delete u->pair_info;
+        u->pair_info = nullptr;
         hap_user_flush(u);
     });
 }

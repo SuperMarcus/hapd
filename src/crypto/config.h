@@ -33,6 +33,8 @@
 #define _CRT_SECURE_NO_DEPRECATE 1
 #endif
 
+#include "../platform.h"
+
 /**
  * \name SECTION: System support
  *
@@ -1141,7 +1143,7 @@
  *
  * Enable the checkup functions (*_self_test).
  */
-#define MBEDTLS_SELF_TEST
+//#define MBEDTLS_SELF_TEST
 
 /**
  * \def MBEDTLS_SHA256_SMALLER

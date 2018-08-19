@@ -2,8 +2,8 @@
 // Created by Xule Zhou on 8/7/18.
 //
 
-#ifndef ARDUINOHOMEKIT_MANUFACTURER_H
-#define ARDUINOHOMEKIT_MANUFACTURER_H
+#ifndef HAPD_MANUFACTURER_H
+#define HAPD_MANUFACTURER_H
 
 #include "GenericCharacteristic.h"
 
@@ -14,4 +14,4 @@ public:
     }
 };
 
-#endif //ARDUINOHOMEKIT_MANUFACTURER_H
+#endif //HAPD_MANUFACTURER_H

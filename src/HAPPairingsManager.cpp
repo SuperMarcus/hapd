@@ -82,9 +82,9 @@ void HAPPairingsManager::onPairSetup(HAPUserHelper * request) {
         }
         case 5: { //M5
             const constexpr static uint8_t Msg5Nonce[] = "PS-Msg05";
-            const constexpr static unsigned int Msg5NonceLen = sizeof(Msg5Nonce) - 1;
-            const constexpr static char hkdfSalt[] = "Pair-Setup-Encrypt-Salt";
-            const constexpr static char hkdfInfo[] = "Pair-Setup-Encrypt-Info";
+            const constexpr unsigned int Msg5NonceLen = sizeof(Msg5Nonce) - 1;
+            const constexpr char hkdfSalt[] = "Pair-Setup-Encrypt-Salt";
+            const constexpr char hkdfInfo[] = "Pair-Setup-Encrypt-Info";
 
             auto dataTlv = tlv8_find(chain, kTLVType_EncryptedData);
             auto dataTagLen = tlv8_value_length(dataTlv);
@@ -162,8 +162,8 @@ void HAPPairingsManager::onPairingDeviceDecryption(hap_pair_info * info, HAPUser
 
     if(hap_crypto_data_decrypt_did_succeed(info->infoStore)){
         //Derive iOSDeviceX
-        const constexpr static char hkdfSalt[] = "Pair-Setup-Controller-Sign-Salt";
-        const constexpr static char hkdfInfo[] = "Pair-Setup-Controller-Sign-Info";
+        const constexpr char hkdfSalt[] = "Pair-Setup-Controller-Sign-Salt";
+        const constexpr char hkdfInfo[] = "Pair-Setup-Controller-Sign-Info";
 
         auto chain = tlv8_parse(info->infoStore->rawData, info->infoStore->dataLen);
         auto deviceLtpk = new uint8_t[32];
@@ -201,10 +201,10 @@ void HAPPairingsManager::onPairingDeviceDecryption(hap_pair_info * info, HAPUser
 
 void HAPPairingsManager::onDevicePaired(hap_pair_info * info, HAPUserHelper * request) {
     //Derive AccessoryX
-    const constexpr static char hkdfSalt[] = "Pair-Setup-Accessory-Sign-Salt";
-    const constexpr static char hkdfInfo[] = "Pair-Setup-Accessory-Sign-Info";
+    const constexpr char hkdfSalt[] = "Pair-Setup-Accessory-Sign-Salt";
+    const constexpr char hkdfInfo[] = "Pair-Setup-Accessory-Sign-Info";
     const constexpr static uint8_t Msg6Nonce[] = "PS-Msg06";
-    const constexpr static unsigned int Msg6NonceLen = sizeof(Msg6Nonce) - 1;
+    const constexpr unsigned int Msg6NonceLen = sizeof(Msg6Nonce) - 1;
 
     auto crypto = info->infoStore;
     auto pubKey = new uint8_t[32];
@@ -300,10 +300,10 @@ void HAPPairingsManager::onPairVerify(HAPUserHelper * request) {
     crypto->session = request;
     switch (step){
         case 1: { //M1
-            const constexpr static uint8_t Msg2Nonce[] = "PV-Msg02";
-            const constexpr static unsigned int Msg2NonceLen = sizeof(Msg2Nonce) - 1;
-            const constexpr static char hkdfSalt[] = "Pair-Verify-Encrypt-Salt";
-            const constexpr static char hkdfInfo[] = "Pair-Verify-Encrypt-Info";
+            static const constexpr uint8_t Msg2Nonce[] = "PV-Msg02";
+            const constexpr unsigned int Msg2NonceLen = sizeof(Msg2Nonce) - 1;
+            const constexpr char hkdfSalt[] = "Pair-Verify-Encrypt-Salt";
+            const constexpr char hkdfInfo[] = "Pair-Verify-Encrypt-Info";
 
             uint8_t AccessoryInfo[ACCESSORY_INFO_LEN];
             uint8_t AccessoryLTPK[32];
@@ -350,8 +350,8 @@ void HAPPairingsManager::onPairVerify(HAPUserHelper * request) {
         }
         case 3: { //M3
             auto subtlv = tlv8_find(chain, kTLVType_EncryptedData);
-            const constexpr static uint8_t Msg3Nonce[] = "PV-Msg03";
-            const constexpr static unsigned int Msg3NonceLen = sizeof(Msg3Nonce) - 1;
+            static const constexpr uint8_t Msg3Nonce[] = "PV-Msg03";
+            const constexpr unsigned int Msg3NonceLen = sizeof(Msg3Nonce) - 1;
 
             crypto->reset();
             crypto->dataLen = tlv8_value_length(subtlv);
@@ -480,9 +480,9 @@ void HAPPairingsManager::onVerifyingDeviceDecryption(hap_pair_info * info, HAPUs
 }
 
 void HAPPairingsManager::onDeviceVerified(hap_pair_info * info, HAPUserHelper * request) {
-    const constexpr static char ctlSalt[] = "Control-Salt";
-    const constexpr static char ctlReadInfo[] = "Control-Read-Encryption-Key";
-    const constexpr static char ctlWriteInfo[] = "Control-Write-Encryption-Key";
+    const constexpr char ctlSalt[] = "Control-Salt";
+    const constexpr char ctlReadInfo[] = "Control-Read-Encryption-Key";
+    const constexpr char ctlWriteInfo[] = "Control-Write-Encryption-Key";
 
     uint8_t M4 = 4;
     auto& store = info->verifyStore;

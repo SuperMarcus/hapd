@@ -2,8 +2,8 @@
 // Created by Xule Zhou on 8/7/18.
 //
 
-#ifndef ARDUINOHOMEKIT_MODEL_H
-#define ARDUINOHOMEKIT_MODEL_H
+#ifndef HAPD_MODEL_H
+#define HAPD_MODEL_H
 
 #include "GenericCharacteristic.h"
 
@@ -14,4 +14,4 @@ public:
     }
 };
 
-#endif //ARDUINOHOMEKIT_MODEL_H
+#endif //HAPD_MODEL_H

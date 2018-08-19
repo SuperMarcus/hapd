@@ -2,8 +2,8 @@
 // Created by Xule Zhou on 6/4/18.
 //
 
-#ifndef ARDUINOHOMEKIT_COMMON_H
-#define ARDUINOHOMEKIT_COMMON_H
+#ifndef HAPD_COMMON_H
+#define HAPD_COMMON_H
 
 #include "platform.h"
 
@@ -127,4 +127,4 @@ struct hap_sd_txt_item {
     const char * value;
 };
 
-#endif //ARDUINOHOMEKIT_COMMON_H
+#endif //HAPD_COMMON_H

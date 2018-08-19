@@ -2,8 +2,8 @@
 // Created by Xule Zhou on 7/17/18.
 //
 
-#ifndef ARDUINOHOMEKIT_HAP_CRYPTO_H
-#define ARDUINOHOMEKIT_HAP_CRYPTO_H
+#ifndef HAPD_HAP_CRYPTO_H
+#define HAPD_HAP_CRYPTO_H
 
 #include "common.h"
 
@@ -222,4 +222,4 @@ void hap_crypto_ephemeral_exchange(hap_crypto_verify *);
  */
 char * hap_crypto_derive_uuid(const char *);
 
-#endif //ARDUINOHOMEKIT_HAP_CRYPTO_H
+#endif //HAPD_HAP_CRYPTO_H

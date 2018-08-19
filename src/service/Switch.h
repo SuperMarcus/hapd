@@ -2,8 +2,8 @@
 // Created by Xule Zhou on 8/7/18.
 //
 
-#ifndef ARDUINOHOMEKIT_SWITCH_H
-#define ARDUINOHOMEKIT_SWITCH_H
+#ifndef HAPD_SWITCH_H
+#define HAPD_SWITCH_H
 
 #include "GenericService.h"
 #include "../characteristic/On.h"
@@ -15,4 +15,4 @@ public:
     }
 };
 
-#endif //ARDUINOHOMEKIT_SWITCH_H
+#endif //HAPD_SWITCH_H

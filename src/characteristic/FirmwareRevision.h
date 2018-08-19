@@ -2,8 +2,8 @@
 // Created by Xule Zhou on 8/7/18.
 //
 
-#ifndef ARDUINOHOMEKIT_FIRMWAREREVISION_H
-#define ARDUINOHOMEKIT_FIRMWAREREVISION_H
+#ifndef HAPD_FIRMWAREREVISION_H
+#define HAPD_FIRMWAREREVISION_H
 
 #include "GenericCharacteristic.h"
 
@@ -14,4 +14,4 @@ public:
     }
 };
 
-#endif //ARDUINOHOMEKIT_FIRMWAREREVISION_H
+#endif //HAPD_FIRMWAREREVISION_H

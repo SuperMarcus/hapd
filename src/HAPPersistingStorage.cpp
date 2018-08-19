@@ -11,15 +11,15 @@
 #include "persistence.h"
 
 #define FIXED_STORVER_ADDR  0x00
-#define FIXED_STORVER_LEN   1
-#define FIXED_FLAGS_ADDR    0x01
+#define FIXED_STORVER_LEN   4
+#define FIXED_FLAGS_ADDR    0x04
 #define FIXED_FLAGS_LEN     4
-#define FIXED_LTPK_ADDR     0x05
+#define FIXED_LTPK_ADDR     0x08
 #define FIXED_LTPK_LEN      32
-#define FIXED_LTSK_ADDR     0x25
+#define FIXED_LTSK_ADDR     0x28
 #define FIXED_LTSK_LEN      64
-#define FIXED_OBJCNT_ADDR   0x65
-#define FIXED_OBJCNT_LEN    2
+#define FIXED_OBJCNT_ADDR   0x68
+#define FIXED_OBJCNT_LEN    4
 
 #define DYNAM_PAIR_ID_ADDR  0x00
 #define DYNAM_PAIR_ID_LEN   36
@@ -34,8 +34,8 @@ HAPPersistingStorage::HAPPersistingStorage() {
     handle = hap_persistence_init();
     flags = new PersistFlags();
 
-    uint8_t storageVersion = 0;
-    hap_persistence_read(handle, FIXED_STORVER_ADDR, &storageVersion, FIXED_STORVER_LEN);
+    uint32_t storageVersion = 0;
+    hap_persistence_read(handle, FIXED_STORVER_ADDR, reinterpret_cast<uint8_t *>(&storageVersion), FIXED_STORVER_LEN);
 
     if(storageVersion != HAP_STORAGE_FMT_VERSION){ format(); }
 

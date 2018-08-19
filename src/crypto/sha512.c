@@ -158,7 +158,7 @@ void mbedtls_sha512_starts( mbedtls_sha512_context *ctx,
 /*
  * Round constants
  */
-static const uint64_t K[80] =
+static const uint64_t K[80] CONST_DATA =
 {
     UL64(0x428A2F98D728AE22),  UL64(0x7137449123EF65CD),
     UL64(0xB5C0FBCFEC4D3B2F),  UL64(0xE9B5DBA58189DBBC),
@@ -341,7 +341,7 @@ void mbedtls_sha512_update( mbedtls_sha512_context *ctx,
 }
 #endif
 
-static const unsigned char sha512_padding[128] =
+static const unsigned char sha512_padding[128] CONST_DATA =
 {
  0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,

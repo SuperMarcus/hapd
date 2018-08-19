@@ -2,8 +2,8 @@
 // Created by Xule Zhou on 8/6/18.
 //
 
-#ifndef ARDUINOHOMEKIT_HAP_FORMATS_H
-#define ARDUINOHOMEKIT_HAP_FORMATS_H
+#ifndef HAPD_HAP_FORMATS_H
+#define HAPD_HAP_FORMATS_H
 
 union CharacteristicValue {
     const char * string_value;
@@ -41,4 +41,4 @@ enum CharacteristicValueFormat {
 
 typedef uint8_t CharacteristicPermissions;
 
-#endif //ARDUINOHOMEKIT_HAP_FORMATS_H
+#endif //HAPD_HAP_FORMATS_H
