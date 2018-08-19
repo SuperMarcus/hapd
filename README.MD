@@ -24,9 +24,10 @@ Portable, lightweight, and modular implementation of Apple's HomeKit Accessory P
     TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     
+## Screenshots
 
-![Snapshot 1](misc/snapshot_1.png){:width="33%"}
-![Snapshot 2](misc/snapshot_2.png){:width="33%"}
-![Snapshot 3](misc/snapshot_3.png){:width="33%"}
+Pairing                  | Paired                   | Switched On
+:-----------------------:|:------------------------:|:-----------------------:
+![](misc/snapshot_1.png) | ![](misc/snapshot_2.png) | ![](misc/snapshot_3.png)
 
 See `src/testings.cpp` for examples.
